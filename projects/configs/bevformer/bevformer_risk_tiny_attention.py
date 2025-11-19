@@ -1,7 +1,13 @@
 """
-BEVFormer with Risk Prediction - Tiny Version
+BEVFormer with Risk-Guided Attention - Tiny Version
 
-This config extends bevformer_tiny.py to add risk prediction capability.
+This config enables risk-guided attention mechanism to improve detection
+by focusing on high-risk regions.
+
+Key differences from bevformer_risk_tiny.py:
+- use_risk_guidance=True
+- Uses RiskGuidedAttentionHead instead of RiskPredictionHead
+- Spatial attention applied to BEV features based on risk map
 """
 
 _base_ = ['./bevformer_tiny.py']
@@ -14,9 +20,9 @@ img_norm_cfg = dict(
 model = dict(
     type='BEVFormerRisk',
 
-    # Risk prediction head configuration
+    # Risk-guided attention head configuration
     risk_head=dict(
-        type='RiskPredictionHead',
+        type='RiskGuidedAttentionHead',  # Changed from RiskPredictionHead
         in_channels=256,
         bev_h=50,
         bev_w=50,
@@ -27,10 +33,13 @@ model = dict(
         norm_cfg=dict(type='BN'),
         act_cfg=dict(type='ReLU'),
         use_sigmoid=True,
+        # Attention-specific parameters
+        attention_type='spatial',  # Options: 'spatial', 'channel', 'both'
+        attention_temp=1.0,        # Temperature for attention softmax
     ),
 
     # Risk configuration
-    use_risk_guidance=False,  # Set to True to use risk-guided attention
+    use_risk_guidance=True,   # ENABLED: Use risk for attention guidance
     risk_loss_weight=100.0,   # Weight for risk loss (increased for sparse risk maps)
 )
 
@@ -81,7 +90,7 @@ data = dict(
         ann_file=data_root + 'nuscenes_infos_temporal_train.pkl',
         pipeline=train_pipeline,
         classes=['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
-                'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'],
+                 'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'],
         modality=dict(
             use_lidar=False,
             use_camera=True,
@@ -94,7 +103,7 @@ data = dict(
         queue_length=3,
         # Risk-specific settings
         use_risk=True,
-        risk_labels_path='data/emergence_risk_v5/risk_labels_train.pkl',  # Mini dataset (324 samples)
+        risk_labels_path='data/emergence_risk_v5/risk_labels_train.pkl',  # Full dataset (mini: 324 samples)
         risk_map_size=(200, 200),
         risk_threshold=0.0,  # Set > 0 to filter low-risk samples
         box_type_3d='LiDAR'),
@@ -105,7 +114,7 @@ data = dict(
         pipeline=test_pipeline,
         bev_size=(200, 200),
         classes=['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
-                'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'],
+                 'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'],
         modality=dict(
             use_lidar=False,
             use_camera=True,
@@ -115,7 +124,7 @@ data = dict(
         test_mode=True,
         # Risk-specific settings
         use_risk=True,
-        risk_labels_path='data/emergence_risk_v5/risk_labels_val.pkl',  # Mini val set (80 samples)
+        risk_labels_path='data/emergence_risk_v5/risk_labels_val.pkl',  # Full val set (80 samples)
         risk_map_size=(200, 200),
         box_type_3d='LiDAR'),
     test=dict(
@@ -125,7 +134,7 @@ data = dict(
         pipeline=test_pipeline,
         bev_size=(200, 200),
         classes=['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
-                'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'],
+                 'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'],
         modality=dict(
             use_lidar=False,
             use_camera=True,
@@ -134,7 +143,7 @@ data = dict(
             use_external=False),
         test_mode=True,
         use_risk=True,
-        risk_labels_path='data/emergence_risk_v5/risk_labels_val.pkl',  # Mini val set (80 samples)
+        risk_labels_path='data/emergence_risk_v5/risk_labels_val.pkl',  # Full val set (80 samples)
         risk_map_size=(200, 200),
         box_type_3d='LiDAR'),
     shuffler_sampler=dict(type='DistributedGroupSampler'),
@@ -148,7 +157,7 @@ optimizer = dict(
     paramwise_cfg=dict(
         custom_keys={
             'img_backbone': dict(lr_mult=0.1),
-            'risk_head': dict(lr_mult=1.0),  # Full learning rate for risk head
+            'risk_head': dict(lr_mult=1.0),  # Same learning rate for risk head
         }),
     weight_decay=0.01)
 
@@ -180,7 +189,7 @@ checkpoint_config = dict(interval=1)
 dist_params = dict(backend='nccl')
 find_unused_parameters = True  # Required for risk head in DDP
 log_level = 'INFO'
-work_dir = './work_dirs/bevformer_risk_tiny'
+work_dir = './work_dirs/bevformer_risk_tiny_attention'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]

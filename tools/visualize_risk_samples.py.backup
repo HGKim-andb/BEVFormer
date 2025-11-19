@@ -15,7 +15,7 @@ import cv2
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
-from matplotlib.patches import Rectangle, Circle, FancyBboxPatch
+from matplotlib.patches import Rectangle, Circle
 from matplotlib.collections import PatchCollection
 from matplotlib.colors import LinearSegmentedColormap
 from tqdm import tqdm
@@ -205,12 +205,7 @@ def visualize_sample(nusc, label_data, save_path, dataroot):
     # 3. Risk Map (heatmap)
     ax_risk = plt.subplot2grid((3, 2), (1, 1))
 
-    # Transpose and flip to match: X=horizontal (left-right), Y=vertical (bottom-top)
-    # Original: risk_map[y, x] where y=row (top-down), x=col (left-right)
-    # Want: bottom of image = ego rear, top = ego front (Y+ = forward)
-    risk_map_display = np.flipud(risk_map.T)  # Transpose then flip vertically
-
-    im = ax_risk.imshow(risk_map_display, cmap=RISK_CMAP, vmin=0, vmax=1,
+    im = ax_risk.imshow(risk_map, cmap=RISK_CMAP, vmin=0, vmax=1,
                        extent=[-50, 50, -50, 50], origin='lower', aspect='equal')
 
     ax_risk.set_title('Risk Map (Full Range)', fontsize=11, fontweight='bold')
@@ -218,29 +213,12 @@ def visualize_sample(nusc, label_data, save_path, dataroot):
     ax_risk.set_ylabel('Y (meters)', fontsize=10)
     ax_risk.grid(True, alpha=0.2, color='white', linewidth=0.5)
 
-    # Draw ego vehicle as rectangle (pointing upward = forward in BEV)
-    ego_width = 2.0   # meters (vehicle width)
-    ego_length = 4.5  # meters (vehicle length)
+    # Mark ego position
+    ax_risk.plot(0, 0, 'b*', markersize=15, markeredgecolor='white', markeredgewidth=1.5)
 
-    # Vehicle centered at (0, 0), pointing upward (Y+ direction = forward)
-    ego_vehicle = FancyBboxPatch(
-        (-ego_width/2, -ego_length/2),  # Bottom-left corner
-        ego_width, ego_length,           # Width, height
-        boxstyle="round,pad=0.1",
-        linewidth=2,
-        edgecolor='cyan',
-        facecolor='blue',
-        alpha=0.7,
-        zorder=10
-    )
-    ax_risk.add_patch(ego_vehicle)
-
-    # Add heading arrow pointing upward (forward direction)
-    arrow_start_y = ego_length/2  # Start from front of vehicle
-    arrow_length = 3.0
-    ax_risk.arrow(0, arrow_start_y, 0, arrow_length,
-                 head_width=1.5, head_length=1.0,
-                 fc='cyan', ec='white', alpha=0.9, zorder=11, linewidth=2)
+    # Ego heading arrow
+    ax_risk.arrow(0, 0, dx, dy, head_width=1.5, head_length=1.0,
+                 fc='cyan', ec='cyan', alpha=0.8, zorder=9, linewidth=2)
 
     # Add colorbar
     cbar = plt.colorbar(im, ax=ax_risk, fraction=0.046, pad=0.04)
@@ -253,10 +231,7 @@ def visualize_sample(nusc, label_data, save_path, dataroot):
     risk_map_masked = risk_map.copy()
     risk_map_masked[risk_map < 0.5] = 0
 
-    # Apply same transformation as above
-    risk_map_masked_display = np.flipud(risk_map_masked.T)
-
-    im_high = ax_high.imshow(risk_map_masked_display, cmap=RISK_CMAP, vmin=0, vmax=1,
+    im_high = ax_high.imshow(risk_map_masked, cmap=RISK_CMAP, vmin=0, vmax=1,
                             extent=[-50, 50, -50, 50], origin='lower', aspect='equal')
 
     ax_high.set_title('High-Risk Regions Only (Risk > 0.5)', fontsize=11, fontweight='bold')
@@ -264,23 +239,12 @@ def visualize_sample(nusc, label_data, save_path, dataroot):
     ax_high.set_ylabel('Y (meters)', fontsize=10)
     ax_high.grid(True, alpha=0.2, color='white', linewidth=0.5)
 
-    # Draw ego vehicle as rectangle (pointing upward = forward in BEV)
-    ego_vehicle_high = FancyBboxPatch(
-        (-ego_width/2, -ego_length/2),  # Bottom-left corner
-        ego_width, ego_length,           # Width, height
-        boxstyle="round,pad=0.1",
-        linewidth=2,
-        edgecolor='cyan',
-        facecolor='blue',
-        alpha=0.7,
-        zorder=10
-    )
-    ax_high.add_patch(ego_vehicle_high)
+    # Mark ego position
+    ax_high.plot(0, 0, 'b*', markersize=15, markeredgecolor='white', markeredgewidth=1.5)
 
-    # Add heading arrow pointing upward (forward direction)
-    ax_high.arrow(0, arrow_start_y, 0, arrow_length,
-                 head_width=1.5, head_length=1.0,
-                 fc='cyan', ec='white', alpha=0.9, zorder=11, linewidth=2)
+    # Ego heading arrow
+    ax_high.arrow(0, 0, dx, dy, head_width=1.5, head_length=1.0,
+                 fc='cyan', ec='cyan', alpha=0.8, zorder=9, linewidth=2)
 
     # Draw objects on high-risk map
     for ann_token in sample['anns']:

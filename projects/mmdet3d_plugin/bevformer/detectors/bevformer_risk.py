@@ -67,41 +67,68 @@ class BEVFormerRisk(BEVFormer):
         Returns:
             dict: Losses
         """
-        # Forward through BEV transformer
+        # Forward through BEV transformer to get original BEV features
         outs = self.pts_bbox_head(pts_feats, img_metas, prev_bev)
 
-        # Detection losses
-        loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs]
-        losses = self.pts_bbox_head.loss(*loss_inputs, img_metas=img_metas)
+        # Get BEV features from transformer output
+        bev_embed = outs['bev_embed']  # Original: [H*W, B, C] from transformer
 
-        # Risk prediction losses
-        if self.risk_head is not None and gt_risk_maps is not None:
-            # Get BEV features from transformer output
-            bev_embed = outs['bev_embed']  # Original: [H*W, B, C] from transformer
-
+        # Risk-guided attention path
+        if self.use_risk_guidance and self.risk_head is not None and gt_risk_maps is not None:
             # BEVFormer transformer returns [H*W, B, C], need to convert to [B, H*W, C]
-            if bev_embed.dim() == 3 and bev_embed.shape[1] < bev_embed.shape[0]:
+            bev_for_risk = bev_embed
+            if bev_for_risk.dim() == 3 and bev_for_risk.shape[1] < bev_for_risk.shape[0]:
                 # Likely [H*W, B, C] format, transpose to [B, H*W, C]
-                bev_embed = bev_embed.permute(1, 0, 2)  # [H*W, B, C] -> [B, H*W, C]
+                bev_for_risk = bev_for_risk.permute(1, 0, 2)  # [H*W, B, C] -> [B, H*W, C]
 
             # Convert gt_risk_maps from list of DataContainer to tensor
             if isinstance(gt_risk_maps, list):
-                # Extract data from DataContainer and stack
                 gt_risk_maps = torch.stack([rm.data for rm in gt_risk_maps], dim=0)
 
-            # Predict risk map
-            if self.use_risk_guidance and hasattr(self.risk_head, 'forward_with_attention'):
+            # Generate risk-guided attention
+            if hasattr(self.risk_head, 'forward_with_attention'):
                 pred_risk_map, attention_weights, attended_features = \
-                    self.risk_head.forward_with_attention(bev_embed)
+                    self.risk_head.forward_with_attention(bev_for_risk)
+
+                # ⭐ KEY: Convert attended features back to BEV format [H*W, B, C]
+                # attended_features: [B, 256, 50, 50] -> [H*W, B, C]
+                B, C, H, W = attended_features.shape
+                attended_bev = attended_features.view(B, C, H * W).permute(2, 0, 1)  # [H*W, B, C]
+
+                # ⭐ Replace BEV features with attended BEV for detection
+                outs['bev_embed'] = attended_bev
+
+                print(f"[Risk-Guided Attention] Applied attention to BEV features")
+                print(f"  Attention range: [{attention_weights.min():.3f}, {attention_weights.max():.3f}]")
             else:
-                pred_risk_map = self.risk_head(bev_embed)
+                # Fallback: no attention
+                pred_risk_map = self.risk_head(bev_for_risk)
 
             # Calculate risk loss
             risk_losses = self.risk_head.loss(pred_risk_map, gt_risk_maps)
+        else:
+            # No risk guidance: use original BEV
+            pred_risk_map = None
+            risk_losses = {}
+            if self.risk_head is not None and gt_risk_maps is not None:
+                # Risk prediction without attention guidance
+                bev_for_risk = bev_embed
+                if bev_for_risk.dim() == 3 and bev_for_risk.shape[1] < bev_for_risk.shape[0]:
+                    bev_for_risk = bev_for_risk.permute(1, 0, 2)
 
-            # Weight and add risk losses
-            for key, value in risk_losses.items():
-                losses[key] = value * self.risk_loss_weight
+                if isinstance(gt_risk_maps, list):
+                    gt_risk_maps = torch.stack([rm.data for rm in gt_risk_maps], dim=0)
+
+                pred_risk_map = self.risk_head(bev_for_risk)
+                risk_losses = self.risk_head.loss(pred_risk_map, gt_risk_maps)
+
+        # Detection losses with (attended or original) BEV features
+        loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs]
+        losses = self.pts_bbox_head.loss(*loss_inputs, img_metas=img_metas)
+
+        # Add weighted risk losses
+        for key, value in risk_losses.items():
+            losses[key] = value * self.risk_loss_weight
 
         return losses
 
