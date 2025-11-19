@@ -178,6 +178,7 @@ checkpoint_config = dict(interval=1)
 
 # Runtime settings
 dist_params = dict(backend='nccl')
+find_unused_parameters = True  # Required for risk head in DDP
 log_level = 'INFO'
 work_dir = './work_dirs/bevformer_risk_tiny'
 load_from = None
