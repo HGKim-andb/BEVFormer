@@ -1,0 +1,27 @@
+RISK PREDICTION METRICS
+================================================================================
+
+Checkpoint: work_dirs/bevformer_risk_single/epoch_2.pth
+Dataset: val
+Num samples: 0
+
+mse_mean: nan
+mse_std: nan
+mae_mean: nan
+mae_std: nan
+max_risk_gt_mean: nan
+max_risk_gt_std: nan
+max_risk_pred_mean: nan
+max_risk_pred_std: nan
+mean_risk_gt_mean: nan
+mean_risk_gt_std: nan
+mean_risk_pred_mean: nan
+mean_risk_pred_std: nan
+precision_mean: nan
+precision_std: nan
+recall_mean: nan
+recall_std: nan
+f1_mean: nan
+f1_std: nan
+zero_prediction_ratio_mean: nan
+zero_prediction_ratio_std: nan

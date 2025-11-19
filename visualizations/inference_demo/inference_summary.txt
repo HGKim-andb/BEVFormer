@@ -1,0 +1,9 @@
+RISK PREDICTION INFERENCE SUMMARY
+================================================================================
+
+Total samples: 20
+High-risk samples (>0.7): 12 (60.0%)
+Zero-risk samples: 5 (25.0%)
+
+Max Risk: min=0.000, max=1.000, mean=0.634
+Mean Risk: min=0.00000, max=0.03093, mean=0.00921

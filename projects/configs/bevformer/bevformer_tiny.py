@@ -259,6 +259,7 @@ total_epochs = 24
 evaluation = dict(interval=1, pipeline=test_pipeline)
 
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
+# load_from = None  # Tiny는 torchvision ResNet50만 사용 (pretrained 설정에 이미 정의됨)
 
 log_config = dict(
     interval=50,

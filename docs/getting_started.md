@@ -3,11 +3,18 @@
 **Please ensure you have prepared the environment and the nuScenes dataset.**
 
 # Train and Test
+export PYTHONPATH="${PWD}:${PYTHONPATH}"
 
 Train BEVFormer with 8 GPUs 
 ```
 ./tools/dist_train.sh ./projects/configs/bevformer/bevformer_base.py 8
 ```
+서버
+bash tools/dist_train.sh  projects/configs/bevformer/bevformer_base.py  3  --work-dir ./work_dirs/bevformer_base_mini
+
+z490
+python tools/train.py     projects/configs/bevformer/bevformer_base.py     --work-dir ./work_dirs/bevformer_base_mini
+
 
 Eval BEVFormer with 8 GPUs
 ```

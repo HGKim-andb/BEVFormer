@@ -1,0 +1,22 @@
+{
+  "top_by_max_risk": [
+    {
+      "scene_token": "cc8c0bf57f984915a77078b10eb33198",
+      "scene_name": "scene-0061",
+      "num_samples": 39,
+      "avg_max_risk": 0.8082859149345984,
+      "avg_mean_risk": 0.23423413779491034,
+      "avg_high_risk_cells": 1782.3589743589744
+    }
+  ],
+  "bottom_by_max_risk": [
+    {
+      "scene_token": "cc8c0bf57f984915a77078b10eb33198",
+      "scene_name": "scene-0061",
+      "num_samples": 39,
+      "avg_max_risk": 0.8082859149345984,
+      "avg_mean_risk": 0.23423413779491034,
+      "avg_high_risk_cells": 1782.3589743589744
+    }
+  ]
+}
