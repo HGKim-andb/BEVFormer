@@ -97,9 +97,6 @@ class BEVFormerRisk(BEVFormer):
 
                 # ⭐ Replace BEV features with attended BEV for detection
                 outs['bev_embed'] = attended_bev
-
-                print(f"[Risk-Guided Attention] Applied attention to BEV features")
-                print(f"  Attention range: [{attention_weights.min():.3f}, {attention_weights.max():.3f}]")
             else:
                 # Fallback: no attention
                 pred_risk_map = self.risk_head(bev_for_risk)
