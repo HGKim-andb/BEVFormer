@@ -88,7 +88,7 @@ def get_high_risk_samples(labels_dict, min_max_risk=0.5):
 
 def visualize_sample(nusc, label_data, save_path, dataroot):
     """
-    Create visualization for one sample
+    Create visualization for one sample with 6 cameras around BEV space
 
     Args:
         nusc: NuScenes instance
@@ -100,43 +100,66 @@ def visualize_sample(nusc, label_data, save_path, dataroot):
     sample = nusc.get('sample', sample_token)
     risk_map = label_data['risk_map']
 
-    # Create figure
-    fig = plt.figure(figsize=(20, 12))
+    # Create figure with modern BEV layout: cameras around the BEV space
+    fig = plt.figure(figsize=(24, 18))
 
     # Layout:
-    # Row 0: Front camera (full width)
-    # Row 1: BEV with objects (left) + Risk Map (right)
-    # Row 2: Risk Map with high-risk regions highlighted
+    #   [FRONT_LEFT]  [FRONT]  [FRONT_RIGHT]
+    #   [BACK_LEFT]    [BEV]   [BACK_RIGHT]
+    #                 [BACK]
+    # Then full-width risk map at bottom
 
     # Add main title with sample info
     fig.text(0.5, 0.98,
              f'Sample: {sample_token[:16]}...  |  Scene: {label_data["scene_name"]}  |  '
              f'Max Risk: {label_data["metadata"]["max_risk"]:.3f}  |  '
              f'High-Risk Cells: {label_data["metadata"]["high_risk_cells"]}',
-             ha='center', fontsize=14, fontweight='bold', va='top')
+             ha='center', fontsize=16, fontweight='bold', va='top')
 
-    # 1. Front camera image
-    ax_cam = plt.subplot2grid((3, 2), (0, 0), colspan=2)
+    # Define camera positions around BEV (using grid layout)
+    # Grid: 4 rows x 3 columns for top section
+    # Layout: FRONT cameras on row 0, BEV on row 1, side cameras on row 2, BACK camera also on row 2
+    camera_positions = {
+        'CAM_FRONT_LEFT': (0, 0),   # Top-left
+        'CAM_FRONT': (0, 1),         # Top-center
+        'CAM_FRONT_RIGHT': (0, 2),   # Top-right
+        'CAM_BACK_LEFT': (2, 0),     # Bottom-left (moved down)
+        'CAM_BACK_RIGHT': (2, 2),    # Bottom-right (moved down)
+        'CAM_BACK': (2, 1),          # Bottom-center
+    }
 
-    cam_name = 'CAM_FRONT'
-    cam_token = sample['data'][cam_name]
-    cam_data = nusc.get('sample_data', cam_token)
-    img_path = Path(dataroot) / cam_data['filename']
+    # 1. Load and display all 6 camera images around the BEV
+    for cam_name, (row, col) in camera_positions.items():
+        ax_cam = plt.subplot2grid((4, 3), (row, col))
 
-    if img_path.exists():
-        img = cv2.imread(str(img_path))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        ax_cam.imshow(img)
-    else:
-        ax_cam.text(0.5, 0.5, f'{cam_name}\nNot found',
-                   ha='center', va='center', transform=ax_cam.transAxes,
-                   fontsize=12)
+        if cam_name in sample['data']:
+            cam_token = sample['data'][cam_name]
+            cam_data = nusc.get('sample_data', cam_token)
+            img_path = Path(dataroot) / cam_data['filename']
 
-    ax_cam.set_title('Front Camera View', fontsize=12, fontweight='bold')
-    ax_cam.axis('off')
+            if img_path.exists():
+                img = cv2.imread(str(img_path))
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                # Resize for consistent display
+                img_resized = cv2.resize(img, (600, 338))  # 16:9 aspect ratio
+                ax_cam.imshow(img_resized)
+            else:
+                ax_cam.text(0.5, 0.5, f'{cam_name}\nNot found',
+                           ha='center', va='center', transform=ax_cam.transAxes,
+                           fontsize=10, color='red')
+        else:
+            ax_cam.text(0.5, 0.5, f'{cam_name}\nN/A',
+                       ha='center', va='center', transform=ax_cam.transAxes,
+                       fontsize=10, color='gray')
 
-    # 2. BEV with detected objects
-    ax_bev = plt.subplot2grid((3, 2), (1, 0))
+        # Camera label (simplified)
+        cam_label = cam_name.replace('CAM_', '').replace('_', ' ')
+        ax_cam.set_title(cam_label, fontsize=10, fontweight='bold')
+        ax_cam.axis('off')
+
+    # 2. BEV with detected objects (center position)
+    # Apply counter-clockwise 90-degree rotation to entire BEV space
+    ax_bev = plt.subplot2grid((4, 3), (1, 1))
     ax_bev.set_xlim(-50, 50)
     ax_bev.set_ylim(-50, 50)
     ax_bev.set_aspect('equal')
@@ -145,20 +168,25 @@ def visualize_sample(nusc, label_data, save_path, dataroot):
     ax_bev.set_ylabel('Y (meters)', fontsize=10)
     ax_bev.set_title('Bird\'s Eye View - Detected Objects', fontsize=11, fontweight='bold')
 
-    # Draw ego vehicle
-    ego_rect = Rectangle((-2, -1), 4, 2, linewidth=2,
+    # Draw ego vehicle (rotated 90 degrees counter-clockwise)
+    # Original: width=4 (x-direction), height=2 (y-direction)
+    # After rotation: width=2, height=4
+    ego_rect = Rectangle((-1, -2), 2, 4, linewidth=2,
                          edgecolor='blue', facecolor='lightblue', alpha=0.6, zorder=10)
     ax_bev.add_patch(ego_rect)
     ax_bev.text(0, 0, 'EGO', ha='center', va='center', fontsize=9,
                fontweight='bold', color='darkblue', zorder=11)
 
-    # Draw ego heading arrow
+    # Draw ego heading arrow (rotated 90 degrees counter-clockwise)
     ego_state = label_data['ego_state']
     heading = ego_state['heading']
     arrow_length = 5.0
     dx = arrow_length * np.cos(heading)
     dy = arrow_length * np.sin(heading)
-    ax_bev.arrow(0, 0, dx, dy, head_width=1.5, head_length=1.0,
+    # Counter-clockwise 90deg rotation: (x, y) -> (-y, x)
+    dx_rot = -dy
+    dy_rot = dx
+    ax_bev.arrow(0, 0, dx_rot, dy_rot, head_width=1.5, head_length=1.0,
                 fc='blue', ec='blue', alpha=0.7, zorder=9)
 
     # Get ego pose for transforming objects
@@ -177,8 +205,12 @@ def visualize_sample(nusc, label_data, save_path, dataroot):
 
         x, y = obj_translation_ego[:2]
 
+        # Apply counter-clockwise 90-degree rotation: (x, y) -> (-y, x)
+        x_rot = -y
+        y_rot = x
+
         # Only show objects within BEV range
-        if -50 <= x <= 50 and -50 <= y <= 50:
+        if -50 <= x_rot <= 50 and -50 <= y_rot <= 50:
             # Color by category
             category = ann['category_name']
             if 'vehicle' in category:
@@ -191,9 +223,9 @@ def visualize_sample(nusc, label_data, save_path, dataroot):
                 color = 'gray'
                 size = 1.5
 
-            circle = Circle((x, y), size, color=color, alpha=0.5, zorder=5)
+            circle = Circle((x_rot, y_rot), size, color=color, alpha=0.5, zorder=5)
             ax_bev.add_patch(circle)
-            ax_bev.plot(x, y, 'o', color=color, markersize=4, zorder=6)
+            ax_bev.plot(x_rot, y_rot, 'o', color=color, markersize=4, zorder=6)
 
     # Add range circles
     for r in [10, 20, 30, 40]:
@@ -202,18 +234,18 @@ def visualize_sample(nusc, label_data, save_path, dataroot):
         ax_bev.add_patch(circle)
         ax_bev.text(r, 0, f'{r}m', fontsize=7, color='gray', alpha=0.6)
 
-    # 3. Risk Map (heatmap)
-    ax_risk = plt.subplot2grid((3, 2), (1, 1))
+    # 3. Risk Map (full width at bottom)
+    ax_risk = plt.subplot2grid((4, 3), (3, 0), colspan=3)
 
-    # Transpose and flip to match: X=horizontal (left-right), Y=vertical (bottom-top)
-    # Original: risk_map[y, x] where y=row (top-down), x=col (left-right)
-    # Want: bottom of image = ego rear, top = ego front (Y+ = forward)
-    risk_map_display = np.flipud(risk_map.T)  # Transpose then flip vertically
+    # Apply 270-degree counter-clockwise rotation (= 90-degree clockwise)
+    # This is equivalent to k=3 or k=-1
+    risk_map_display = np.rot90(risk_map, k=-1)
 
     im = ax_risk.imshow(risk_map_display, cmap=RISK_CMAP, vmin=0, vmax=1,
                        extent=[-50, 50, -50, 50], origin='lower', aspect='equal')
 
-    ax_risk.set_title('Risk Map (Full Range)', fontsize=11, fontweight='bold')
+    ax_risk.set_title('Risk Map with High-Risk Regions Highlighted (Risk > 0.5)',
+                     fontsize=12, fontweight='bold')
     ax_risk.set_xlabel('X (meters)', fontsize=10)
     ax_risk.set_ylabel('Y (meters)', fontsize=10)
     ax_risk.grid(True, alpha=0.2, color='white', linewidth=0.5)
@@ -242,47 +274,11 @@ def visualize_sample(nusc, label_data, save_path, dataroot):
                  head_width=1.5, head_length=1.0,
                  fc='cyan', ec='white', alpha=0.9, zorder=11, linewidth=2)
 
-    # Add colorbar
-    cbar = plt.colorbar(im, ax=ax_risk, fraction=0.046, pad=0.04)
-    cbar.set_label('Risk', fontsize=9)
+    # Draw detected objects on risk map with white outlines
+    ego_pose = nusc.get('ego_pose', sample['data']['LIDAR_TOP'])
+    ego_translation = np.array(ego_pose['translation'])
+    ego_rotation = Quaternion(ego_pose['rotation'])
 
-    # 4. High-risk regions highlighted (bottom row, full width)
-    ax_high = plt.subplot2grid((3, 2), (2, 0), colspan=2)
-
-    # Create masked risk map (only show high risk > 0.5)
-    risk_map_masked = risk_map.copy()
-    risk_map_masked[risk_map < 0.5] = 0
-
-    # Apply same transformation as above
-    risk_map_masked_display = np.flipud(risk_map_masked.T)
-
-    im_high = ax_high.imshow(risk_map_masked_display, cmap=RISK_CMAP, vmin=0, vmax=1,
-                            extent=[-50, 50, -50, 50], origin='lower', aspect='equal')
-
-    ax_high.set_title('High-Risk Regions Only (Risk > 0.5)', fontsize=11, fontweight='bold')
-    ax_high.set_xlabel('X (meters)', fontsize=10)
-    ax_high.set_ylabel('Y (meters)', fontsize=10)
-    ax_high.grid(True, alpha=0.2, color='white', linewidth=0.5)
-
-    # Draw ego vehicle as rectangle (pointing upward = forward in BEV)
-    ego_vehicle_high = FancyBboxPatch(
-        (-ego_width/2, -ego_length/2),  # Bottom-left corner
-        ego_width, ego_length,           # Width, height
-        boxstyle="round,pad=0.1",
-        linewidth=2,
-        edgecolor='cyan',
-        facecolor='blue',
-        alpha=0.7,
-        zorder=10
-    )
-    ax_high.add_patch(ego_vehicle_high)
-
-    # Add heading arrow pointing upward (forward direction)
-    ax_high.arrow(0, arrow_start_y, 0, arrow_length,
-                 head_width=1.5, head_length=1.0,
-                 fc='cyan', ec='white', alpha=0.9, zorder=11, linewidth=2)
-
-    # Draw objects on high-risk map
     for ann_token in sample['anns']:
         ann = nusc.get('sample_annotation', ann_token)
 
@@ -293,28 +289,35 @@ def visualize_sample(nusc, label_data, save_path, dataroot):
 
         x, y = obj_translation_ego[:2]
 
-        if -50 <= x <= 50 and -50 <= y <= 50:
-            # Draw white outline for visibility
-            ax_high.plot(x, y, 'o', color='white', markersize=8,
-                        markeredgecolor='black', markeredgewidth=1.5, zorder=6)
+        # Apply counter-clockwise 90-degree rotation: (x, y) -> (-y, x)
+        x_rot = -y
+        y_rot = x
+
+        if -50 <= x_rot <= 50 and -50 <= y_rot <= 50:
+            # Draw white outline for visibility on risk map
+            ax_risk.plot(x_rot, y_rot, 'o', color='white', markersize=6,
+                        markeredgecolor='black', markeredgewidth=1.2, zorder=8)
 
     # Add colorbar
-    cbar_high = plt.colorbar(im_high, ax=ax_high, fraction=0.046, pad=0.04)
-    cbar_high.set_label('Risk', fontsize=9)
+    cbar = plt.colorbar(im, ax=ax_risk, fraction=0.03, pad=0.02)
+    cbar.set_label('Risk Level', fontsize=10)
 
-    # Add statistics text box
+    # Add statistics text box outside the risk map (in figure coordinates)
+    ego_state = label_data['ego_state']
     stats_text = (
         f'Statistics:\n'
         f'Max Risk: {label_data["metadata"]["max_risk"]:.3f}\n'
         f'Mean Risk: {label_data["metadata"]["mean_risk"]:.3f}\n'
         f'High (>0.7): {label_data["metadata"]["high_risk_cells"]} cells\n'
         f'Medium (0.3-0.7): {label_data["metadata"]["medium_risk_cells"]} cells\n'
+        f'Low (0.0-0.3): {label_data["metadata"]["low_risk_cells"]} cells\n'
         f'Ego Velocity: {ego_state["velocity"]:.1f} m/s'
     )
-    ax_high.text(0.02, 0.98, stats_text,
-                transform=ax_high.transAxes, fontsize=9,
-                verticalalignment='top',
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    # Place text box to the left of risk map in figure coordinates
+    fig.text(0.02, 0.18, stats_text,
+            fontsize=10,
+            verticalalignment='center',
+            bbox=dict(boxstyle='round', facecolor='white', alpha=0.95, edgecolor='black', linewidth=1.5))
 
     # Adjust layout and save
     plt.tight_layout(rect=[0, 0, 1, 0.97])
