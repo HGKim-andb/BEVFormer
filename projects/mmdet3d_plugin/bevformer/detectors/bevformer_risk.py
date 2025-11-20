@@ -209,6 +209,12 @@ class BEVFormerRisk(BEVFormer):
         risk_map = None
         if self.risk_head is not None:
             bev_embed = outs['bev_embed']
+
+            # Convert BEV from [H*W, B, C] to [B, H*W, C] for risk head
+            if bev_embed.dim() == 3 and bev_embed.shape[1] < bev_embed.shape[0]:
+                # Likely in [H*W, B, C] format
+                bev_embed = bev_embed.permute(1, 0, 2)  # -> [B, H*W, C]
+
             risk_map = self.risk_head(bev_embed)  # [B, 1, 200, 200]
 
         return outs['bev_embed'], bbox_results, risk_map
