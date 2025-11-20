@@ -67,15 +67,16 @@ def setup_matplotlib():
 def plot_risk_attention_detection(img, risk_map, attention_weights, boxes, scores, labels,
                                    class_names, sample_idx, output_path, gt_risk_map=None):
     """
-    Create a comprehensive visualization showing:
-    - Input image (multi-view)
-    - Ground truth risk map (if available)
-    - Predicted risk map
-    - Attention weights
-    - Detection results overlaid on BEV
+    Create a comprehensive visualization with cameras around BEV layout:
+
+    Layout:
+        [FRONT_LEFT]  [FRONT]     [FRONT_RIGHT]
+        [BACK_LEFT]    [BEV]      [BACK_RIGHT]
+                      [BACK]
+        [GT RISK (if available)]  [PRED RISK]  [ATTENTION]
 
     Args:
-        img: Input images [N_cams, 3, H, W]
+        img: Input images [N_cams, 3, H, W] (6 cameras)
         risk_map: Predicted risk map [1, 200, 200]
         attention_weights: Attention weights [1, 50, 50]
         boxes: Detection boxes
@@ -86,63 +87,113 @@ def plot_risk_attention_detection(img, risk_map, attention_weights, boxes, score
         output_path: Output file path
         gt_risk_map: Ground truth risk map (optional)
     """
-    n_plots = 4 if gt_risk_map is not None else 3
-    fig = plt.figure(figsize=(20, 5))
-    gs = GridSpec(1, n_plots, figure=fig, wspace=0.3)
-
-    # 1. Input image (show front camera)
-    ax1 = fig.add_subplot(gs[0, 0])
-    if img is not None and len(img) > 0:
-        front_img = img[0].cpu().numpy().transpose(1, 2, 0)
-        # Denormalize
+    # Denormalize function
+    def denormalize_img(img_tensor):
+        img_np = img_tensor.cpu().numpy().transpose(1, 2, 0)
         mean = np.array([123.675, 116.28, 103.53])
         std = np.array([58.395, 57.12, 57.375])
-        front_img = (front_img * std + mean) / 255.0
-        front_img = np.clip(front_img, 0, 1)
-        ax1.imshow(front_img)
-    ax1.set_title('Front Camera View')
-    ax1.axis('off')
+        img_np = (img_np * std + mean) / 255.0
+        return np.clip(img_np, 0, 1)
 
-    # 2. Ground truth risk map (if available)
-    plot_idx = 1
+    # Create figure with 4 rows
+    fig = plt.figure(figsize=(24, 20))
+
+    # Camera names in order: FL, F, FR, BL, BR, B
+    camera_names = ['FRONT_LEFT', 'FRONT', 'FRONT_RIGHT',
+                    'BACK_LEFT', 'BACK_RIGHT', 'BACK']
+
+    # Define camera positions (row, col)
+    camera_positions = {
+        'FRONT_LEFT': (0, 0),
+        'FRONT': (0, 1),
+        'FRONT_RIGHT': (0, 2),
+        'BACK_LEFT': (2, 0),
+        'BACK_RIGHT': (2, 2),
+        'BACK': (2, 1),
+    }
+
+    # 1. Display all 6 cameras around BEV
+    if img is not None and len(img) >= 6:
+        for idx, (cam_name, (row, col)) in enumerate(camera_positions.items()):
+            ax_cam = plt.subplot2grid((4, 3), (row, col))
+            if idx < len(img):
+                cam_img = denormalize_img(img[idx])
+                # Resize for display
+                cam_img_resized = cv2.resize(cam_img, (600, 338))
+                ax_cam.imshow(cam_img_resized)
+            ax_cam.set_title(cam_name.replace('_', ' '), fontsize=10, fontweight='bold')
+            ax_cam.axis('off')
+
+    # 2. BEV with detection boxes (center position)
+    ax_bev = plt.subplot2grid((4, 3), (1, 1))
+    ax_bev.set_xlim(-51.2, 51.2)
+    ax_bev.set_ylim(-51.2, 51.2)
+    ax_bev.set_aspect('equal')
+    ax_bev.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+    ax_bev.set_xlabel('X (meters)', fontsize=10)
+    ax_bev.set_ylabel('Y (meters)', fontsize=10)
+    ax_bev.set_title('Bird\'s Eye View - Detections', fontsize=11, fontweight='bold')
+
+    # Draw ego vehicle
+    ego_rect = patches.Rectangle((-2, -2), 4, 4, linewidth=2,
+                                 edgecolor='blue', facecolor='lightblue', alpha=0.6, zorder=10)
+    ax_bev.add_patch(ego_rect)
+    ax_bev.text(0, 0, 'EGO', ha='center', va='center', fontsize=9,
+               fontweight='bold', color='darkblue', zorder=11)
+
+    # Draw detection boxes
+    colors = plt.cm.tab10(np.linspace(0, 1, 10))
+    boxes_np = boxes.cpu().numpy() if torch.is_tensor(boxes) else boxes
+    scores_np = scores.cpu().numpy() if torch.is_tensor(scores) else scores
+    labels_np = labels.cpu().numpy() if torch.is_tensor(labels) else labels
+
+    for box, score, label in zip(boxes_np, scores_np, labels_np):
+        if score < 0.3:
+            continue
+
+        x, y, z, w, l, h, yaw = box[:7]
+        color = colors[int(label) % len(colors)]
+
+        # Rotated rectangle corners
+        cos_yaw = np.cos(yaw)
+        sin_yaw = np.sin(yaw)
+        corners = np.array([
+            [l/2, w/2], [l/2, -w/2], [-l/2, -w/2], [-l/2, w/2], [l/2, w/2]
+        ])
+        rot_matrix = np.array([[cos_yaw, -sin_yaw], [sin_yaw, cos_yaw]])
+        corners_rot = corners @ rot_matrix.T
+        corners_rot[:, 0] += x
+        corners_rot[:, 1] += y
+
+        ax_bev.plot(corners_rot[:, 0], corners_rot[:, 1], color=color, linewidth=1.5)
+        ax_bev.fill(corners_rot[:, 0], corners_rot[:, 1], color=color, alpha=0.2)
+
+    # 3. Bottom row: GT Risk, Predicted Risk, Attention
+    bottom_plots = []
     if gt_risk_map is not None:
-        ax_gt = fig.add_subplot(gs[0, plot_idx])
-        im_gt = ax_gt.imshow(gt_risk_map.squeeze().cpu().numpy(), cmap='hot', vmin=0, vmax=1)
-        ax_gt.set_title('Ground Truth Risk Map')
-        ax_gt.set_xlabel('X (BEV)')
-        ax_gt.set_ylabel('Y (BEV)')
-        plt.colorbar(im_gt, ax=ax_gt, label='Risk Score', fraction=0.046)
-        plot_idx += 1
+        bottom_plots.append(('Ground Truth Risk', gt_risk_map, 'hot'))
+    bottom_plots.append(('Predicted Risk Map', risk_map, 'hot'))
+    bottom_plots.append(('Attention Weights', attention_weights, 'viridis'))
 
-    # 3. Predicted risk map
-    ax2 = fig.add_subplot(gs[0, plot_idx])
-    im2 = ax2.imshow(risk_map.squeeze().cpu().numpy(), cmap='hot', vmin=0, vmax=1)
-    ax2.set_title('Predicted Risk Map')
-    ax2.set_xlabel('X (BEV)')
-    ax2.set_ylabel('Y (BEV)')
-    plt.colorbar(im2, ax=ax2, label='Risk Score', fraction=0.046)
+    for idx, (title, data, cmap) in enumerate(bottom_plots):
+        ax = plt.subplot2grid((4, len(bottom_plots)), (3, idx))
+        im = ax.imshow(data.squeeze().cpu().numpy(), cmap=cmap, vmin=0, vmax=1)
+        ax.set_title(title, fontsize=10, fontweight='bold')
+        ax.set_xlabel('X (BEV)', fontsize=8)
+        ax.set_ylabel('Y (BEV)', fontsize=8)
+        plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    # Add statistics
-    risk_text = f"Mean: {risk_map.mean():.3f}\nMax: {risk_map.max():.3f}\nMin: {risk_map.min():.3f}"
-    ax2.text(0.02, 0.98, risk_text, transform=ax2.transAxes,
-             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
-             fontsize=8)
+        # Add statistics
+        stats_text = f"Max: {data.max():.3f}\nMean: {data.mean():.3f}"
+        ax.text(0.02, 0.98, stats_text, transform=ax.transAxes,
+                verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
+                fontsize=8)
 
-    # 4. Attention weights
-    ax3 = fig.add_subplot(gs[0, plot_idx + 1])
-    im3 = ax3.imshow(attention_weights.squeeze().cpu().numpy(), cmap='viridis', vmin=0, vmax=1)
-    ax3.set_title('Attention Weights')
-    ax3.set_xlabel('X (BEV)')
-    ax3.set_ylabel('Y (BEV)')
-    plt.colorbar(im3, ax=ax3, label='Attention', fraction=0.046)
+    # Main title
+    fig.suptitle(f'Sample {sample_idx} - Risk-Guided Attention for 3D Object Detection',
+                fontsize=16, fontweight='bold', y=0.98)
 
-    # Add statistics
-    att_text = f"Mean: {attention_weights.mean():.3f}\nMax: {attention_weights.max():.3f}\nMin: {attention_weights.min():.3f}"
-    ax3.text(0.02, 0.98, att_text, transform=ax3.transAxes,
-             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
-             fontsize=8)
-
-    plt.suptitle(f'Sample {sample_idx} - Risk-Guided Attention Visualization', fontsize=14, y=0.98)
+    plt.tight_layout(rect=[0, 0, 1, 0.97])
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
 
