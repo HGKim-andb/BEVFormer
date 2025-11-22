@@ -314,14 +314,16 @@ class RiskGuidedAttentionHead(RiskPredictionHead):
         # Spatial attention based on risk
         if self.attention_type in ['spatial', 'both']:
             spatial_attn = self.spatial_attention_conv(risk_map_small)
-            spatial_attn = torch.sigmoid(spatial_attn / self.attention_temp)
+            # Apply temperature BEFORE sigmoid to sharpen/soften distribution
+            # Higher temp (>1) = softer, Lower temp (<1) = sharper
+            spatial_attn = torch.sigmoid(spatial_attn * self.attention_temp)
             attention_weights = spatial_attn
             attended_features = attended_features * spatial_attn
 
         # Channel attention based on risk
         if self.attention_type in ['channel', 'both']:
             channel_attn = self.channel_attention(attended_features)
-            channel_attn = torch.sigmoid(channel_attn / self.attention_temp)
+            channel_attn = torch.sigmoid(channel_attn * self.attention_temp)
             if attention_weights is None:
                 attention_weights = channel_attn
             attended_features = attended_features * channel_attn

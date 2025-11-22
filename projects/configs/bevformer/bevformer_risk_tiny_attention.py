@@ -35,7 +35,7 @@ model = dict(
         use_sigmoid=True,
         # Attention-specific parameters
         attention_type='spatial',  # Options: 'spatial', 'channel', 'both'
-        attention_temp=1.0,        # Temperature for attention softmax
+        attention_temp=3.0,        # Temperature: >1 sharpens attention distribution
     ),
 
     # Risk configuration
