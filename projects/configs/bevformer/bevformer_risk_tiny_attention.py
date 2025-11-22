@@ -103,7 +103,7 @@ data = dict(
         queue_length=3,
         # Risk-specific settings
         use_risk=True,
-        risk_labels_path='data/emergence_risk_v5/risk_labels_train.pkl',  # Full dataset (mini: 324 samples)
+        risk_labels_path='data/emergence_risk_v5/risk_labels_train_20pct.pkl',  # 20% dataset for faster training
         risk_map_size=(200, 200),
         risk_threshold=0.0,  # Set > 0 to filter low-risk samples
         box_type_3d='LiDAR'),
@@ -124,7 +124,7 @@ data = dict(
         test_mode=True,
         # Risk-specific settings
         use_risk=True,
-        risk_labels_path='data/emergence_risk_v5/risk_labels_val.pkl',  # Full val set (80 samples)
+        risk_labels_path='data/emergence_risk_v5/risk_labels_val_20pct.pkl',  # 20% val set for faster training
         risk_map_size=(200, 200),
         box_type_3d='LiDAR'),
     test=dict(
