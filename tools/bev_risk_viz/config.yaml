@@ -1,0 +1,201 @@
+# BEV Risk Map Generator - Configuration File
+# This file contains all configurable parameters for risk calculation and visualization
+
+# ============================================================================
+# Risk Factor Weights (α, β, γ, δ)
+# ============================================================================
+risk_weights:
+  trajectory_alignment: 0.3  # α - Weight for trajectory alignment factor
+  occlusion_severity: 0.3    # β - Weight for occlusion severity factor
+  temporal_urgency: 0.2      # γ - Weight for temporal urgency factor
+  proximity: 0.2             # δ - Weight for proximity factor
+
+# ============================================================================
+# BEV Grid Configuration
+# ============================================================================
+bev_grid:
+  # Spatial range in meters (ego vehicle at origin)
+  x_range:
+    min: -50.0
+    max: 50.0
+
+  y_range:
+    min: -50.0
+    max: 50.0
+
+  # Grid resolution in meters per cell
+  resolution: 0.5  # Recommended: 0.1 - 1.0
+
+# ============================================================================
+# Ego Vehicle Parameters
+# ============================================================================
+ego_vehicle:
+  # Default velocity in m/s (can be overridden by real data)
+  velocity: 10.0
+
+  # Default heading in radians (0 = pointing up/forward)
+  heading: 0.0
+
+# ============================================================================
+# Risk Calculation Parameters
+# ============================================================================
+risk_parameters:
+  # Maximum distance for proximity calculation (meters)
+  max_proximity_distance: 50.0
+
+  # Time horizon for temporal urgency (seconds)
+  time_horizon: 3.0
+
+  # Occlusion depth threshold for severity calculation (meters)
+  occlusion_depth_threshold: 2.0
+
+# ============================================================================
+# Data Source Configuration
+# ============================================================================
+data_source:
+  # nuScenes dataset settings
+  nuscenes:
+    data_root: "data/nuscenes"
+    version: "v1.0-mini"  # Options: v1.0-mini, v1.0-trainval
+
+  # Pre-computed risk/occlusion data (optional)
+  risk_data_path: null  # Set to path of .pkl file if available
+
+# ============================================================================
+# Visualization Settings
+# ============================================================================
+visualization:
+  # Figure settings
+  figure:
+    width: 12  # inches
+    height: 10  # inches
+    dpi: 150
+    style: "dark_background"  # Options: dark_background, default
+
+  # Colormap settings
+  colormap:
+    # Risk map colormap (green -> yellow -> red)
+    risk: "custom"  # Uses custom gradient
+
+    # Individual factor colormaps
+    theta: "viridis"
+    occlusion: "Blues"
+    temporal: "YlOrRd"
+    proximity: "plasma"
+
+  # Display options
+  display:
+    show_colorbar: true
+    show_grid: true
+    show_ego_marker: true
+    grid_alpha: 0.3
+
+# ============================================================================
+# Export Settings
+# ============================================================================
+export:
+  # Default output directory
+  output_dir: "exports"
+
+  # Default formats for export
+  default_formats:
+    - png
+    - npy
+
+  # PNG export settings
+  png:
+    dpi: 150
+    bbox_inches: "tight"
+
+  # CSV export settings
+  csv:
+    include_coordinates: true
+    delimiter: ","
+
+  # PDF report settings
+  pdf:
+    include_metadata: true
+    include_statistics: true
+    include_factor_breakdown: true
+
+# ============================================================================
+# Demo/Test Scenarios
+# ============================================================================
+demo_scenarios:
+  # Pre-defined synthetic scenarios for testing
+  scenarios:
+    - name: "Simple Occlusion"
+      description: "Single large occluding object"
+
+    - name: "Multi-Vehicle Intersection"
+      description: "Multiple vehicles creating complex occlusions"
+
+    - name: "Parking Lot Exit"
+      description: "Parked cars on both sides creating blind spots"
+
+    - name: "Highway Merge"
+      description: "Vehicles in merge lane"
+
+    - name: "Pedestrian Crossing"
+      description: "Building/wall creating occlusion near crosswalk"
+
+# ============================================================================
+# Performance Settings
+# ============================================================================
+performance:
+  # Maximum number of frames to process in batch
+  max_batch_size: 100
+
+  # Enable multiprocessing for batch operations
+  use_multiprocessing: false
+
+  # Number of worker processes (if multiprocessing enabled)
+  num_workers: 4
+
+# ============================================================================
+# Advanced Settings
+# ============================================================================
+advanced:
+  # Occlusion detection settings
+  occlusion:
+    # Categories considered as occluding objects
+    occluding_categories:
+      - "vehicle.car"
+      - "vehicle.truck"
+      - "vehicle.bus"
+      - "vehicle.construction"
+      - "vehicle.trailer"
+      - "static_object.bicycle_rack"
+
+    # Shadow length behind occluding objects (meters)
+    shadow_length: 5.0
+
+    # Minimum object size to be considered occluding (meters)
+    min_object_size: 1.0
+
+  # Risk calculation tweaks
+  risk_calculation:
+    # Velocity normalization reference (m/s)
+    velocity_normalization: 10.0
+
+    # Exponential decay rate for proximity
+    proximity_decay_rate: 2.0
+
+    # Enable/disable specific factors
+    enable_trajectory: true
+    enable_occlusion: true
+    enable_temporal: true
+    enable_proximity: true
+
+# ============================================================================
+# Logging and Debug
+# ============================================================================
+logging:
+  # Logging level (DEBUG, INFO, WARNING, ERROR)
+  level: "INFO"
+
+  # Save logs to file
+  save_to_file: false
+
+  # Log file path
+  log_file: "bev_risk_viz.log"

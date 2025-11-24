@@ -238,8 +238,10 @@ class BEVFormerRisk(BEVFormer):
 
         # Add risk map to results if available
         if risk_map is not None:
+            # risk_map shape: [B, 1, 200, 200] where B is batch size
             for i, result_dict in enumerate(bbox_list):
-                result_dict['risk_map'] = risk_map[i]  # [1, 200, 200]
+                # Extract single sample from batch and keep as [1, 200, 200]
+                result_dict['risk_map'] = risk_map[i:i+1]  # Preserve batch dimension
 
         return new_prev_bev, bbox_list
 
