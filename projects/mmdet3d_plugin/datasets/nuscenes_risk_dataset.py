@@ -196,6 +196,44 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
 
         return data
 
+    def evaluate(self, results, logger=None, **kwargs):
+        """
+        Evaluate both detection and risk prediction.
+
+        Args:
+            results (list[dict]): List of result dicts containing 'pts_bbox' and optionally 'risk_map'
+
+        Returns:
+            dict: Combined evaluation metrics from detection and risk
+        """
+        # Separate risk_map from results for detection evaluation
+        results_for_detection = []
+        risk_maps = []
+
+        for result in results:
+            # Extract pts_bbox for detection evaluation
+            det_result = {'pts_bbox': result['pts_bbox']}
+            results_for_detection.append(det_result)
+
+            # Extract risk_map if available
+            risk_map = result.get('risk_map', None)
+            risk_maps.append(risk_map)
+
+        # 1. Detection evaluation (parent class)
+        det_metrics = super().evaluate(results_for_detection, logger=logger, **kwargs)
+
+        # 2. Risk evaluation
+        risk_metrics = {}
+        if self.use_risk and any(rm is not None for rm in risk_maps):
+            # Create results with only risk_map for risk evaluation
+            risk_results = [{'risk_map': rm} if rm is not None else {} for rm in risk_maps]
+            risk_metrics = self.evaluate_risk(risk_results, logger=logger, **kwargs)
+
+        # 3. Merge metrics
+        combined_metrics = {**det_metrics, **risk_metrics}
+
+        return combined_metrics
+
     def evaluate_risk(self, results, logger=None, **kwargs):
         """
         Evaluate risk prediction performance.
