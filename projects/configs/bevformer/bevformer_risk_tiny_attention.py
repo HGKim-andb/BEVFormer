@@ -143,7 +143,7 @@ data = dict(
             use_external=False),
         test_mode=True,
         use_risk=True,
-        risk_labels_path='data/emergence_risk_v5/risk_labels_val.pkl',  # Full val set (80 samples)
+        risk_labels_path='data/emergence_risk_v5/risk_labels_val_20pct.pkl',  # 20% val set for faster training
         risk_map_size=(200, 200),
         box_type_3d='LiDAR'),
     shuffler_sampler=dict(type='DistributedGroupSampler'),
