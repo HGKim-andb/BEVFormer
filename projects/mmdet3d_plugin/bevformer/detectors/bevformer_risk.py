@@ -235,13 +235,8 @@ class BEVFormerRisk(BEVFormer):
 
         for result_dict, pts_bbox in zip(bbox_list, bbox_pts):
             result_dict['pts_bbox'] = pts_bbox
-
-        # Add risk map to results if available
-        if risk_map is not None:
-            # risk_map shape: [B, 1, 200, 200] where B is batch size
-            for i, result_dict in enumerate(bbox_list):
-                # Extract single sample from batch and keep as [1, 200, 200]
-                result_dict['risk_map'] = risk_map[i:i+1]  # Preserve batch dimension
+            # Don't add risk_map here - it causes issues with NuScenes evaluation
+            # Risk map should be handled separately in custom evaluation
 
         return new_prev_bev, bbox_list
 
