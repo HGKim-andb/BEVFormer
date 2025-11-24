@@ -235,8 +235,12 @@ class BEVFormerRisk(BEVFormer):
 
         for result_dict, pts_bbox in zip(bbox_list, bbox_pts):
             result_dict['pts_bbox'] = pts_bbox
-            # Don't add risk_map here - it causes issues with NuScenes evaluation
-            # Risk map should be handled separately in custom evaluation
+
+        # Add risk map in correct format for evaluation [200, 200]
+        if risk_map is not None:
+            for i, result_dict in enumerate(bbox_list):
+                # Extract [200, 200] shape by removing batch and channel dims
+                result_dict['risk_map'] = risk_map[i, 0].cpu().numpy()
 
         return new_prev_bev, bbox_list
 
