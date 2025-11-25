@@ -172,7 +172,7 @@ lr_config = dict(
     min_lr_ratio=1e-3)
 
 total_epochs = 1  # Quick test: 1 epoch only
-evaluation = dict(interval=999, pipeline=test_pipeline)  # Disable evaluation during training
+evaluation = dict(interval=1, pipeline=test_pipeline)  # Evaluate after each epoch
 
 runner = dict(type='EpochBasedRunner', max_epochs=1)  # Quick test
 
