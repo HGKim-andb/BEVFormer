@@ -35,12 +35,12 @@ model = dict(
         use_sigmoid=True,
         # Attention-specific parameters
         attention_type='spatial',  # Options: 'spatial', 'channel', 'both'
-        attention_temp=3.0,        # Temperature: >1 sharpens attention distribution
+        attention_temp=1.0,        # Temperature: 1.0 for stable training (reduced from 3.0)
     ),
 
     # Risk configuration
     use_risk_guidance=True,   # ENABLED: Use risk for attention guidance
-    risk_loss_weight=100.0,   # Weight for risk loss (increased for sparse risk maps)
+    risk_loss_weight=10.0,    # Weight for risk loss (reduced from 100.0 for stability)
 )
 
 # Dataset modifications
