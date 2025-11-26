@@ -246,10 +246,13 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
             dict: Evaluation metrics
         """
         if not self.use_risk:
+            print("[Risk Eval] use_risk=False, skipping risk evaluation")
             return {}
 
         from sklearn.metrics import mean_squared_error, mean_absolute_error
         import numpy as np
+
+        print(f"[Risk Eval] Starting risk evaluation with {len(results)} results")
 
         all_pred_risks = []
         all_gt_risks = []
@@ -258,6 +261,8 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
 
         for i, result in enumerate(results):
             if 'risk_map' not in result:
+                if i < 5:  # Only print first 5 to avoid spam
+                    print(f"[Risk Eval] Sample {i}: risk_map not in result, keys={list(result.keys())}")
                 continue
 
             # Get prediction
@@ -271,6 +276,8 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
             info = self.data_infos[i]
             risk_label = self.get_risk_label(info['token'])
             if risk_label is None:
+                if i < 5:
+                    print(f"[Risk Eval] Sample {i}: No GT risk label for token {info['token']}")
                 continue
 
             gt_risk = risk_label['risk_map']
@@ -281,7 +288,10 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
             all_max_risks_pred.append(pred_risk.max())
             all_max_risks_gt.append(gt_risk.max())
 
+        print(f"[Risk Eval] Collected {len(all_pred_risks)} valid samples for evaluation")
+
         if len(all_pred_risks) == 0:
+            print("[Risk Eval] No valid samples found, returning empty metrics")
             return {}
 
         # Concatenate all predictions and GTs
@@ -321,6 +331,10 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
             'risk_f1': float(f1),
             'risk_max_corr': float(max_risk_corr),
         }
+
+        print("[Risk Eval] Computed metrics:")
+        for key, val in metrics.items():
+            print(f"  {key}: {val:.4f}")
 
         if logger is not None:
             logger.info("Risk Evaluation Metrics:")
