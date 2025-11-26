@@ -45,8 +45,13 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
 
         # Load risk labels
         if self.use_risk:
+            import os
+            abs_path = os.path.abspath(risk_labels_path)
+            print(f"[Dataset Init] Loading risk labels from: {abs_path}")
+            print(f"[Dataset Init] File exists: {os.path.exists(abs_path)}")
+
             self.risk_labels_dict = self._load_risk_labels(risk_labels_path)
-            print(f"Loaded risk labels from {risk_labels_path}")
+            print(f"[Dataset Init] Loaded risk labels from {risk_labels_path}")
 
             # Build sample_token -> risk_label mapping for fast lookup
             self.risk_map_dict = {}
@@ -57,7 +62,8 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
                     self.risk_map_dict[sample_token] = label
                     total_samples += 1
 
-            print(f"Total risk labels: {total_samples}")
+            print(f"[Dataset Init] Total risk labels: {total_samples}")
+            print(f"[Dataset Init] First 5 sample tokens: {list(self.risk_map_dict.keys())[:5]}")
 
             # Filter samples by risk threshold if specified
             if self.risk_threshold > 0:
