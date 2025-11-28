@@ -99,6 +99,12 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
         # Get all sample tokens that have risk labels
         valid_tokens = set(self.risk_map_dict.keys())
 
+        # Debug: Print first 5 tokens from data_infos and risk labels
+        if len(self.data_infos) > 0:
+            print(f"[Dataset Init] First 5 data_infos tokens: {[info['token'] for info in self.data_infos[:5]]}")
+        print(f"[Dataset Init] Risk labels have {len(valid_tokens)} tokens")
+        print(f"[Dataset Init] First 5 risk label tokens: {list(valid_tokens)[:5]}")
+
         # Filter data_infos
         original_count = len(self.data_infos)
         self.data_infos = [
