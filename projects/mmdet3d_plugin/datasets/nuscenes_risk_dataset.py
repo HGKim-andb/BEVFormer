@@ -65,8 +65,12 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
             print(f"[Dataset Init] Total risk labels: {total_samples}")
             print(f"[Dataset Init] First 5 sample tokens: {list(self.risk_map_dict.keys())[:5]}")
 
-            # Filter samples by risk threshold if specified
-            if self.risk_threshold > 0:
+            # In test mode, ALWAYS filter to only use samples with risk labels
+            # to ensure evaluation works correctly
+            if test_mode:
+                self._filter_to_risk_samples_only()
+            # In train mode, filter by risk threshold if specified
+            elif self.risk_threshold > 0:
                 self._filter_by_risk_threshold()
         else:
             self.risk_labels_dict = None
@@ -84,6 +88,23 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
             risk_labels = pickle.load(f)
 
         return risk_labels
+
+    def _filter_to_risk_samples_only(self):
+        """Filter dataset to only include samples that have risk labels (for evaluation)."""
+        print(f"[Dataset Init] Filtering to samples with risk labels only")
+
+        # Get all sample tokens that have risk labels
+        valid_tokens = set(self.risk_map_dict.keys())
+
+        # Filter data_infos
+        original_count = len(self.data_infos)
+        self.data_infos = [
+            info for info in self.data_infos
+            if info['token'] in valid_tokens
+        ]
+
+        print(f"[Dataset Init] Filtered: {original_count} -> {len(self.data_infos)} samples "
+              f"({len(self.data_infos) / original_count * 100:.1f}%)")
 
     def _filter_by_risk_threshold(self):
         """Filter dataset to only include samples with high risk."""
