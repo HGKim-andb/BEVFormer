@@ -16,12 +16,20 @@ from pathlib import Path
 import sys
 import os
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# Add parent directories to path
+script_dir = Path(__file__).parent
+sys.path.insert(0, str(script_dir.parent.parent))
+sys.path.insert(0, str(script_dir))
 
-from tools.bev_risk_viz.risk_engine import RiskCalculationEngine, RiskConfig
-from tools.bev_risk_viz.nuscenes_loader import NuScenesLoader
-from tools.bev_risk_viz.visualizer import RiskVisualizer
+# Import with try/except for both absolute and relative imports
+try:
+    from risk_engine import RiskCalculationEngine, RiskConfig
+    from nuscenes_loader import NuScenesLoader
+    from visualizer import RiskVisualizer
+except ImportError:
+    from tools.bev_risk_viz.risk_engine import RiskCalculationEngine, RiskConfig
+    from tools.bev_risk_viz.nuscenes_loader import NuScenesLoader
+    from tools.bev_risk_viz.visualizer import RiskVisualizer
 
 
 def init_session_state():

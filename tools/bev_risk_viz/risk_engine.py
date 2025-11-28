@@ -282,6 +282,11 @@ class RiskCalculationEngine:
             self.grid_x, self.grid_y, self.config.max_proximity_distance
         )
 
+        # Apply occlusion mask to T and P
+        # T와 P는 차폐 영역 내에서만 의미가 있음
+        T_masked = T * occlusion_mask
+        P_masked = P * occlusion_mask
+
         # Calculate weighted risk score
         # R = α*θ + β*O + γ*T + δ*P (normalized by sum of weights)
         weights_sum = (self.config.weight_trajectory +
@@ -292,8 +297,8 @@ class RiskCalculationEngine:
         risk_map = (
             self.config.weight_trajectory * theta +
             self.config.weight_occlusion * O +
-            self.config.weight_temporal * T +
-            self.config.weight_proximity * P
+            self.config.weight_temporal * T_masked +
+            self.config.weight_proximity * P_masked
         ) / weights_sum
 
         # Ensure risk is in [0, 1]
@@ -303,13 +308,15 @@ class RiskCalculationEngine:
             'risk_map': risk_map,
             'theta': theta,
             'O': O,
-            'T': T,
-            'P': P,
+            'T': T_masked,  # 마스크 적용된 버전 반환
+            'P': P_masked,  # 마스크 적용된 버전 반환
+            'T_raw': T,     # 원본도 함께 반환 (디버깅용)
+            'P_raw': P,     # 원본도 함께 반환 (디버깅용)
             'risk_breakdown': {
                 'trajectory_contribution': self.config.weight_trajectory * theta / weights_sum,
                 'occlusion_contribution': self.config.weight_occlusion * O / weights_sum,
-                'temporal_contribution': self.config.weight_temporal * T / weights_sum,
-                'proximity_contribution': self.config.weight_proximity * P / weights_sum,
+                'temporal_contribution': self.config.weight_temporal * T_masked / weights_sum,
+                'proximity_contribution': self.config.weight_proximity * P_masked / weights_sum,
             }
         }
 

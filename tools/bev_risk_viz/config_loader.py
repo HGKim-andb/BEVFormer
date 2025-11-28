@@ -77,7 +77,10 @@ class ConfigLoader:
         Returns:
             RiskConfig instance
         """
-        from tools.bev_risk_viz.risk_engine import RiskConfig
+        try:
+            from risk_engine import RiskConfig
+        except ImportError:
+            from tools.bev_risk_viz.risk_engine import RiskConfig
 
         weights = self.config['risk_weights']
         bev_grid = self.config['bev_grid']

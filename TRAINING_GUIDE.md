@@ -39,11 +39,12 @@ risk_labels_path='data/emergence_risk_v5/risk_labels_val.pkl',    # 80 samples
 
 ## 학습 설정
 
-- **Epochs**: 6
-- **Batch size**: 1 per GPU
+- **Epochs**: 1 (quick test) / 6 (full training)
+- **Batch size**: 4 per GPU (optimized for 48GB GPU)
+- **Workers**: 8 per GPU
 - **Learning rate**: 2e-4
-- **Attention temp**: 3.0 (sharper attention)
-- **Risk loss weight**: 100.0
+- **Attention temp**: 1.0 (stable training)
+- **Risk loss weight**: 10.0 (stability)
 
 ## 예상 소요 시간
 
@@ -78,6 +79,13 @@ python inference_risk_attention.py \
 
 ## Troubleshooting
 
+### Python Path 문제 (코드 변경사항이 반영 안 될 때)
+서버에 mmdet3d가 egg 패키지로 설치되어 있으면 로컬 코드 변경이 반영되지 않습니다.
+
+**해결 방법**: [FIX_PYTHON_PATH.md](FIX_PYTHON_PATH.md) 참고
+- dist_train.sh와 dist_test.sh가 자동으로 PYTHONPATH 설정
+- 또는 ~/.bashrc에 export 추가
+
 ### NCCL Error 발생 시
 ```bash
 # 환경 변수 추가
@@ -86,6 +94,10 @@ export NCCL_IB_DISABLE=1
 export NCCL_DEBUG=INFO  # 디버깅용
 ```
 
+### Gradient Explosion (grad_norm: inf)
+- `risk_loss_weight` 줄이기: 100.0 → 10.0
+- `attention_temp` 줄이기: 3.0 → 1.0
+
 ### CUDA Out of Memory
 - GPU 메모리가 부족하면 GPU 개수 늘리기
-- 또는 gradient accumulation 사용
+- 또는 `samples_per_gpu` 줄이기: 4 → 2 → 1

@@ -8,41 +8,57 @@
 
 ## Solution
 
-서버에서 다음 명령어를 실행하세요:
+BEVFormer는 setup.py가 없으므로 PYTHONPATH로 해결합니다.
 
-### 1. 기존 설치된 패키지 제거
+### 방법 1: 환경 변수 설정 (권장)
+
+서버에서 ~/.bashrc에 추가:
+```bash
+# ~/.bashrc 파일 편집
+nano ~/.bashrc
+
+# 파일 끝에 다음 라인 추가:
+export PYTHONPATH=/home/sp/Project/BEVFormer2/BEVFormer:$PYTHONPATH
+
+# 저장 후 적용
+source ~/.bashrc
+```
+
+### 방법 2: 실행 시마다 PYTHONPATH 설정
+
+매번 실행할 때 명시적으로 설정:
 ```bash
 cd ~/Project/BEVFormer2/BEVFormer
-pip uninstall mmdet3d -y
-```
 
-### 2. Editable 모드로 재설치
-```bash
-# 방법 1: pip editable install (권장)
-pip install -e .
-
-# 방법 2: setup.py develop
-# python setup.py develop
-```
-
-### 3. 설치 확인
-```bash
-# mmdet3d_plugin 경로가 로컬 프로젝트를 가리키는지 확인
-python -c "import projects.mmdet3d_plugin.datasets.nuscenes_risk_dataset as m; print(m.__file__)"
-
-# 출력이 다음과 같아야 합니다:
-# ~/Project/BEVFormer2/BEVFormer/projects/mmdet3d_plugin/datasets/nuscenes_risk_dataset.py
-# (site-packages가 아님!)
-```
-
-### 4. Evaluation 재실행
-```bash
+# Training
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
+PYTHONPATH=/home/sp/Project/BEVFormer2/BEVFormer:$PYTHONPATH \
+NCCL_P2P_DISABLE=1 \
+NCCL_IB_DISABLE=1 \
+bash tools/dist_train.sh \
+    projects/configs/bevformer/bevformer_risk_tiny_attention.py \
+    4 \
+    --work-dir ./work_dirs/bevformer_risk_tiny_attention
+
+# Evaluation
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
+PYTHONPATH=/home/sp/Project/BEVFormer2/BEVFormer:$PYTHONPATH \
 bash tools/dist_test.sh \
     projects/configs/bevformer/bevformer_risk_tiny_attention.py \
     work_dirs/bevformer_risk_tiny_attention_1126/epoch_1.pth \
     4 \
     --eval bbox
+```
+
+### 설치 확인
+```bash
+# PYTHONPATH 설정 후 확인
+PYTHONPATH=/home/sp/Project/BEVFormer2/BEVFormer:$PYTHONPATH \
+python -c "import projects.mmdet3d_plugin.datasets.nuscenes_risk_dataset as m; print(m.__file__)"
+
+# 출력이 다음과 같아야 합니다:
+# /home/sp/Project/BEVFormer2/BEVFormer/projects/mmdet3d_plugin/datasets/nuscenes_risk_dataset.py
+# (site-packages가 아님!)
 ```
 
 ## 확인사항

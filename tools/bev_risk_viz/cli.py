@@ -18,14 +18,24 @@ import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# Add parent directories to path
+script_dir = Path(__file__).parent
+sys.path.insert(0, str(script_dir.parent.parent))
+sys.path.insert(0, str(script_dir))
 
-from tools.bev_risk_viz.config_loader import load_config
-from tools.bev_risk_viz.risk_engine import RiskCalculationEngine
-from tools.bev_risk_viz.nuscenes_loader import NuScenesLoader
-from tools.bev_risk_viz.visualizer import RiskVisualizer
-from tools.bev_risk_viz.exporter import RiskDataExporter
+# Import with try/except for both absolute and relative imports
+try:
+    from config_loader import load_config
+    from risk_engine import RiskCalculationEngine
+    from nuscenes_loader import NuScenesLoader
+    from visualizer import RiskVisualizer
+    from exporter import RiskDataExporter
+except ImportError:
+    from tools.bev_risk_viz.config_loader import load_config
+    from tools.bev_risk_viz.risk_engine import RiskCalculationEngine
+    from tools.bev_risk_viz.nuscenes_loader import NuScenesLoader
+    from tools.bev_risk_viz.visualizer import RiskVisualizer
+    from tools.bev_risk_viz.exporter import RiskDataExporter
 
 
 def create_demo_occlusion(scenario_name: str, H: int, W: int) -> np.ndarray:
