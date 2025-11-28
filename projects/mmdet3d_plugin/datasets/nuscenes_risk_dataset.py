@@ -37,6 +37,9 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
                  risk_threshold=0.0,
                  *args,
                  **kwargs):
+        # Extract test_mode before calling super().__init__()
+        test_mode = kwargs.get('test_mode', False)
+
         super().__init__(*args, **kwargs)
 
         self.use_risk = use_risk
