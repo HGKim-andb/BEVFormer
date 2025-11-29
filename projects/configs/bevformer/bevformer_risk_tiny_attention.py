@@ -40,7 +40,7 @@ model = dict(
 
     # Risk configuration
     use_risk_guidance=True,   # ENABLED: Use risk for attention guidance
-    risk_loss_weight=10.0,    # Weight for risk loss (reduced from 100.0 for stability)
+    risk_loss_weight=100.0,   # Increased to make risk loss comparable to detection loss
 )
 
 # Dataset modifications
