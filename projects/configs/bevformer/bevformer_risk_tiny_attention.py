@@ -171,10 +171,10 @@ lr_config = dict(
     warmup_ratio=1.0 / 3,
     min_lr_ratio=1e-3)
 
-total_epochs = 3  # Short training: 3 epochs
-evaluation = dict(interval=1, pipeline=test_pipeline)  # Evaluate after each epoch
+total_epochs = 12  # Full training: 12 epochs (Day 3-5 experiment)
+evaluation = dict(interval=3, pipeline=test_pipeline)  # Evaluate every 3 epochs to save time
 
-runner = dict(type='EpochBasedRunner', max_epochs=3)  # Short training
+runner = dict(type='EpochBasedRunner', max_epochs=12)  # Full training
 
 log_config = dict(
     interval=50,
@@ -183,7 +183,7 @@ log_config = dict(
         dict(type='TensorboardLoggerHook')
     ])
 
-checkpoint_config = dict(interval=1)
+checkpoint_config = dict(interval=3)  # Save every 3 epochs
 
 # Runtime settings
 dist_params = dict(backend='nccl')

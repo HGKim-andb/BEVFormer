@@ -220,12 +220,12 @@ python inference_risk_attention.py \
 ## 체크리스트
 
 ### Day 1
-- [x] weight=100 실험 완료 - loss_risk=0.0004 (너무 작음)
-- [x] weight=1000 실험 완료 - grad_norm=inf (폭발!)
-- [ ] weight=500 실험 진행중
-- [ ] Training log 분석
-- [ ] 성공 기준 달성 여부 확인
-- [ ] 다음 단계 결정
+- [x] weight=100 실험 완료 - loss_risk=0.0004 (너무 작음), MSE=0.754, corr=-0.37
+- [x] weight=1000 실험 완료 - grad_norm=inf (폭발!), MSE=0.754, corr=nan
+- [x] weight=500 실험 완료 - **MSE=0.0013, corr=+0.197** ✅ BEST!
+- [x] Training log 분석 완료
+- [x] 성공 기준 달성: grad_norm 안정(12-13), correlation 양수 전환!
+- [x] 다음 단계 결정: weight=500으로 12 epoch 풀 학습 진행
 
 ### Day 2
 - [ ] 추가 실험 (필요시)
@@ -326,3 +326,7 @@ export NCCL_DEBUG=INFO
 
 - 2025-11-29: 초기 계획 작성
 - Risk loss weight: 10 → 100 (Day 1 실험)
+- 2025-12-01: Weight tuning 실험 완료
+  - weight=100: loss_risk=0.0004, MSE=0.754, corr=-0.37 (실패)
+  - weight=1000: grad_norm=inf (폭발!)
+  - weight=500: MSE=0.0013, corr=+0.197 ✅ **BEST - 12 epoch 학습 진행**
