@@ -220,7 +220,9 @@ python inference_risk_attention.py \
 ## 체크리스트
 
 ### Day 1
-- [ ] weight=100 실험 완료
+- [x] weight=100 실험 완료 - loss_risk=0.0004 (너무 작음)
+- [x] weight=1000 실험 완료 - grad_norm=inf (폭발!)
+- [ ] weight=500 실험 진행중
 - [ ] Training log 분석
 - [ ] 성공 기준 달성 여부 확인
 - [ ] 다음 단계 결정

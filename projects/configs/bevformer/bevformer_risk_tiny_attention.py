@@ -40,7 +40,7 @@ model = dict(
 
     # Risk configuration
     use_risk_guidance=True,   # ENABLED: Use risk for attention guidance
-    risk_loss_weight=1000.0,  # Further increased - weight=100 still too small (loss_risk=0.0004)
+    risk_loss_weight=500.0,   # Reduced from 1000 - gradient explosion occurred
 )
 
 # Dataset modifications
