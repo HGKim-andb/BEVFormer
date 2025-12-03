@@ -103,7 +103,7 @@ data = dict(
         queue_length=3,
         # Risk-specific settings
         use_risk=True,
-        risk_labels_path='data/emergence_risk_v5/risk_labels_train_20pct.pkl',  # 20% dataset for faster training
+        risk_labels_path='data/emergence_risk_v5/risk_labels_train.pkl',  # Full train risk labels (162 matching samples from 4 scenes)
         risk_map_size=(200, 200),
         risk_threshold=0.0,  # Set > 0 to filter low-risk samples
         box_type_3d='LiDAR'),
@@ -124,7 +124,7 @@ data = dict(
         test_mode=True,
         # Risk-specific settings
         use_risk=True,
-        risk_labels_path='data/emergence_risk_v5/risk_labels_val.pkl',  # Has 80 samples from TRAIN set (mislabeled as val)
+        risk_labels_path='data/emergence_risk_v5/risk_labels_train.pkl',  # Same as train - no real val risk labels available
         risk_map_size=(200, 200),
         box_type_3d='LiDAR'),
     test=dict(
@@ -143,7 +143,7 @@ data = dict(
             use_external=False),
         test_mode=True,
         use_risk=True,
-        risk_labels_path='data/emergence_risk_v5/risk_labels_val.pkl',  # Has 80 samples from TRAIN set (mislabeled as val)
+        risk_labels_path='data/emergence_risk_v5/risk_labels_train.pkl',  # Same as train - no real val risk labels available
         risk_map_size=(200, 200),
         box_type_3d='LiDAR'),
     shuffler_sampler=dict(type='DistributedGroupSampler'),
@@ -171,10 +171,10 @@ lr_config = dict(
     warmup_ratio=1.0 / 3,
     min_lr_ratio=1e-3)
 
-total_epochs = 12  # Full training: 12 epochs (Day 3-5 experiment)
-evaluation = dict(interval=3, pipeline=test_pipeline)  # Evaluate every 3 epochs to save time
+total_epochs = 3  # Quick test: 3 epochs to verify risk loss is working
+evaluation = dict(interval=1, pipeline=test_pipeline)  # Evaluate every epoch for testing
 
-runner = dict(type='EpochBasedRunner', max_epochs=12)  # Full training
+runner = dict(type='EpochBasedRunner', max_epochs=3)  # Quick test
 
 log_config = dict(
     interval=50,
@@ -183,7 +183,7 @@ log_config = dict(
         dict(type='TensorboardLoggerHook')
     ])
 
-checkpoint_config = dict(interval=3)  # Save every 3 epochs
+checkpoint_config = dict(interval=1)  # Save every epoch for testing
 
 # Runtime settings
 dist_params = dict(backend='nccl')
