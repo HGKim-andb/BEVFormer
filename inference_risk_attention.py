@@ -21,6 +21,9 @@ from mmcv.runner import load_checkpoint
 import os
 import cv2
 
+# Import custom modules to register them
+import mmdet3d_plugin
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Inference with Risk-Guided Attention')
