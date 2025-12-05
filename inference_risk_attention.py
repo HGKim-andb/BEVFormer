@@ -15,14 +15,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from mmcv import Config
-from mmdet3d.datasets import build_dataset
-from mmdet3d.models import build_model
 from mmcv.runner import load_checkpoint
 import os
+import sys
 import cv2
 
-# Import custom modules to register them
-import mmdet3d_plugin
+# Add projects to path before importing mmdet3d
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'projects'))
+
+# Now import - this will register custom modules
+import mmdet3d_plugin  # noqa: F401
+from mmdet3d.datasets import build_dataset
+from mmdet3d.models import build_model
 
 
 def parse_args():
