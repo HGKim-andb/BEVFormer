@@ -192,14 +192,16 @@ class RiskPredictionHead(nn.Module):
         # MAE Loss for robustness
         mae_loss = F.l1_loss(pred_risk, gt_risk, reduction='none')
 
-        # Focal loss component for high-risk regions (risk > 0.5)
-        # This helps focus on important high-risk areas
-        high_risk_mask = (gt_risk > 0.5).float()
-        focal_weight = torch.where(
-            high_risk_mask > 0,
-            torch.ones_like(gt_risk) * 2.0,  # Higher weight for high-risk regions
-            torch.ones_like(gt_risk) * 1.0
-        )
+        # IMPROVED: Much higher weight for non-zero risk regions
+        # Since risk maps are sparse (most pixels are 0), we need aggressive weighting
+        # - High risk (>0.5): 100x weight
+        # - Medium risk (0.1-0.5): 50x weight
+        # - Low risk (0.01-0.1): 10x weight
+        # - Background (<=0.01): 1x weight
+        focal_weight = torch.ones_like(gt_risk)
+        focal_weight = torch.where(gt_risk > 0.5, focal_weight * 100.0, focal_weight)
+        focal_weight = torch.where((gt_risk > 0.1) & (gt_risk <= 0.5), focal_weight * 50.0, focal_weight)
+        focal_weight = torch.where((gt_risk > 0.01) & (gt_risk <= 0.1), focal_weight * 10.0, focal_weight)
 
         # Apply valid mask if provided
         if valid_mask is not None:
@@ -212,12 +214,13 @@ class RiskPredictionHead(nn.Module):
         else:
             num_valid = pred_risk.numel()
 
-        # Weighted losses
-        weighted_mse = (mse_loss * focal_weight).sum() / num_valid
-        weighted_mae = (mae_loss * focal_weight).sum() / num_valid
+        # Weighted losses - normalize by weighted count for stability
+        weighted_sum = focal_weight.sum().clamp(min=1.0)
+        weighted_mse = (mse_loss * focal_weight).sum() / weighted_sum
+        weighted_mae = (mae_loss * focal_weight).sum() / weighted_sum
 
-        # Combined loss
-        total_loss = weighted_mse + 0.5 * weighted_mae
+        # Combined loss - scale up to make it visible in total loss
+        total_loss = (weighted_mse + 0.5 * weighted_mae) * 100.0  # Scale factor
 
         losses = {
             'loss_risk_mse': weighted_mse,
