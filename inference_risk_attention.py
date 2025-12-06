@@ -142,14 +142,20 @@ def plot_comprehensive_visualization(img, risk_map, attention_weights, boxes, sc
 
     for idx, (title, data, cmap) in enumerate(bottom_plots):
         ax = plt.subplot2grid((4, len(bottom_plots)), (3, idx))
-        im = ax.imshow(data.squeeze().cpu().numpy(), cmap=cmap, vmin=0, vmax=1)
+        # Handle both torch tensors and numpy arrays
+        if hasattr(data, 'cpu'):
+            plot_data = data.squeeze().cpu().numpy()
+        else:
+            plot_data = np.squeeze(data)
+        im = ax.imshow(plot_data, cmap=cmap, vmin=0, vmax=1)
         ax.set_title(title, fontsize=10, fontweight='bold')
         ax.set_xlabel('X (BEV)', fontsize=8)
         ax.set_ylabel('Y (BEV)', fontsize=8)
         plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
         # Add statistics
-        stats_text = f"Max: {data.max():.3f}\nMean: {data.mean():.3f}"
+        data_for_stats = plot_data
+        stats_text = f"Max: {data_for_stats.max():.3f}\nMean: {data_for_stats.mean():.3f}"
         ax.text(0.02, 0.98, stats_text, transform=ax.transAxes,
                 verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
                 fontsize=8)
