@@ -175,10 +175,10 @@ lr_config = dict(
     warmup_ratio=1.0 / 3,
     min_lr_ratio=1e-3)
 
-total_epochs = 3  # Quick test: 3 epochs to verify risk loss is working
-evaluation = dict(interval=1, pipeline=test_pipeline)  # Evaluate every epoch for testing
+total_epochs = 2  # ~4 hours with 3 GPUs
+evaluation = dict(interval=1, pipeline=test_pipeline)  # Evaluate every epoch
 
-runner = dict(type='EpochBasedRunner', max_epochs=3)  # Quick test
+runner = dict(type='EpochBasedRunner', max_epochs=2)  # ~4 hours
 
 log_config = dict(
     interval=50,
