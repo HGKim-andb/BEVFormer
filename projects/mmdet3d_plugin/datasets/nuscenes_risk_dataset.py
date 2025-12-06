@@ -13,7 +13,7 @@ from mmcv.parallel import DataContainer as DC
 from .nuscenes_dataset import CustomNuScenesDataset
 
 
-@DATASETS.register_module()
+@DATASETS.register_module(force=True)
 class NuScenesRiskDataset(CustomNuScenesDataset):
     """
     NuScenes Dataset with Risk Map Labels.
@@ -384,7 +384,7 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
         return metrics
 
 
-@DATASETS.register_module()
+@DATASETS.register_module(force=True)
 class NuScenesRiskDatasetVal(NuScenesRiskDataset):
     """
     Validation dataset with risk labels.

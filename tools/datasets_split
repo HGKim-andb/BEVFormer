@@ -1,0 +1,6 @@
+
+python tools/subset_data_by_density.py \
+    --input ./data/nuscenes/nuscenes_infos_temporal_train.pkl \
+    --output ./data/nuscenes/nuscenes_infos_temporal_train_20percent_dense.pkl \
+    --ratio 0.2 \
+    --selection top

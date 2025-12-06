@@ -10,10 +10,10 @@ Train BEVFormer with 8 GPUs
 ./tools/dist_train.sh ./projects/configs/bevformer/bevformer_base.py 8
 ```
 서버
-bash tools/dist_train.sh  projects/configs/bevformer/bevformer_base.py  3  --work-dir ./work_dirs/bevformer_base_mini
-
+tools/dist_train.sh  projects/configs/bevformer/bevformer_tiny.py  3  --work-dir ./work_dirs/bevformer_tiny_mini
+tools/dist_train.sh       projects/configs/bevformer/bevformer_small_20percent.py  3  --work-dir ./work_dirs/bevformer_small_20percent
 z490
-python tools/train.py     projects/configs/bevformer/bevformer_base.py     --work-dir ./work_dirs/bevformer_base_mini
+python tools/train.py     projects/configs/bevformer/bevformer_tiny.py     --work-dir ./work_dirs/bevformer_tiny_mini
 
 
 Eval BEVFormer with 8 GPUs

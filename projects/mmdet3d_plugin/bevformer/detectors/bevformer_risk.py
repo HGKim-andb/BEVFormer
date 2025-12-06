@@ -11,7 +11,7 @@ from mmdet3d.core import bbox3d2result
 from .bevformer import BEVFormer
 
 
-@DETECTORS.register_module()
+@DETECTORS.register_module(force=True)
 class BEVFormerRisk(BEVFormer):
     """
     BEVFormer with Risk Prediction Head.
@@ -245,7 +245,7 @@ class BEVFormerRisk(BEVFormer):
         return new_prev_bev, bbox_list
 
 
-@DETECTORS.register_module()
+@DETECTORS.register_module(force=True)
 class BEVFormerRiskAttention(BEVFormerRisk):
     """
     BEVFormer with Risk-Guided Attention.

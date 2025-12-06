@@ -11,7 +11,7 @@ from mmdet.models import HEADS
 from mmcv.cnn import ConvModule
 
 
-@HEADS.register_module()
+@HEADS.register_module(force=True)
 class RiskPredictionHead(nn.Module):
     """
     Risk Prediction Head that converts BEV features to risk maps.
@@ -243,7 +243,7 @@ class RiskPredictionHead(nn.Module):
         return self.forward(bev_features)
 
 
-@HEADS.register_module()
+@HEADS.register_module(force=True)
 class RiskGuidedAttentionHead(RiskPredictionHead):
     """
     Extended Risk Head with attention guidance capability.
