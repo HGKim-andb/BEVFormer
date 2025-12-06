@@ -196,7 +196,7 @@ log_level = 'INFO'
 work_dir = './work_dirs/bevformer_risk_tiny_attention'
 # Load pretrained BEVFormer weights with risk head (freeze detection, train risk head only)
 # Use existing trained risk model checkpoint instead of backbone-only pretrain
-load_from = 'work_dirs/bevformer_risk_attention_v2/epoch_1.pth'
+load_from = 'work_dirs/risk_w500_12ep/epoch_12.pth'  # Best: 12 epoch trained with w=500
 resume_from = None
 workflow = [('train', 1)]
 
