@@ -151,13 +151,17 @@ data = dict(
 )
 
 # Learning rate and optimizer
+# FREEZE everything except risk_head for faster training
 optimizer = dict(
     type='AdamW',
-    lr=2e-4,
+    lr=1e-3,  # Higher LR for risk head only
     paramwise_cfg=dict(
         custom_keys={
-            'img_backbone': dict(lr_mult=0.1),
-            'risk_head': dict(lr_mult=1.0),  # Same learning rate for risk head
+            'img_backbone': dict(lr_mult=0.0),  # FROZEN
+            'pts_bbox_head': dict(lr_mult=0.0),  # FROZEN
+            'transformer': dict(lr_mult=0.0),  # FROZEN
+            'bev_embedding': dict(lr_mult=0.0),  # FROZEN
+            'risk_head': dict(lr_mult=1.0),  # ONLY train risk head
         }),
     weight_decay=0.01)
 
@@ -190,7 +194,8 @@ dist_params = dict(backend='nccl')
 find_unused_parameters = True  # Required for risk head in DDP
 log_level = 'INFO'
 work_dir = './work_dirs/bevformer_risk_tiny_attention'
-load_from = None
+# Load pretrained BEVFormer weights (freeze detection, train risk head only)
+load_from = 'ckpts/r101_dcn_fcos3d_pretrain.pth'
 resume_from = None
 workflow = [('train', 1)]
 
