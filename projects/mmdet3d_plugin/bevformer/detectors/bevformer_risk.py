@@ -44,6 +44,50 @@ class BEVFormerRisk(BEVFormer):
         self.use_risk_guidance = use_risk_guidance
         self.risk_loss_weight = risk_loss_weight
 
+        # Freeze all layers except risk_head for efficient training
+        self._freeze_except_risk_head()
+
+    def _freeze_except_risk_head(self):
+        """Freeze all parameters except risk_head for efficient training."""
+        # Freeze img_backbone
+        if hasattr(self, 'img_backbone'):
+            for param in self.img_backbone.parameters():
+                param.requires_grad = False
+            print("[BEVFormerRisk] Frozen: img_backbone")
+
+        # Freeze img_neck
+        if hasattr(self, 'img_neck'):
+            for param in self.img_neck.parameters():
+                param.requires_grad = False
+            print("[BEVFormerRisk] Frozen: img_neck")
+
+        # Freeze pts_bbox_head (detection head + transformer)
+        if hasattr(self, 'pts_bbox_head'):
+            for param in self.pts_bbox_head.parameters():
+                param.requires_grad = False
+            print("[BEVFormerRisk] Frozen: pts_bbox_head (includes transformer)")
+
+        # Freeze bev_embedding if exists
+        if hasattr(self, 'bev_embedding'):
+            if hasattr(self.bev_embedding, 'parameters'):
+                for param in self.bev_embedding.parameters():
+                    param.requires_grad = False
+            elif isinstance(self.bev_embedding, torch.nn.Parameter):
+                self.bev_embedding.requires_grad = False
+            print("[BEVFormerRisk] Frozen: bev_embedding")
+
+        # Ensure risk_head is trainable
+        if self.risk_head is not None:
+            for param in self.risk_head.parameters():
+                param.requires_grad = True
+            print("[BEVFormerRisk] Trainable: risk_head")
+
+        # Count parameters
+        total_params = sum(p.numel() for p in self.parameters())
+        trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        frozen_params = total_params - trainable_params
+        print(f"[BEVFormerRisk] Total: {total_params:,}, Trainable: {trainable_params:,}, Frozen: {frozen_params:,}")
+
     def forward_pts_train(self,
                           pts_feats,
                           gt_bboxes_3d,
