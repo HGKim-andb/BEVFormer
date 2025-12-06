@@ -219,8 +219,8 @@ class RiskPredictionHead(nn.Module):
         weighted_mse = (mse_loss * focal_weight).sum() / weighted_sum
         weighted_mae = (mae_loss * focal_weight).sum() / weighted_sum
 
-        # Combined loss - scale up to make it visible in total loss
-        total_loss = (weighted_mse + 0.5 * weighted_mae) * 100.0  # Scale factor
+        # Combined loss - no internal scaling, let config control weight
+        total_loss = weighted_mse + 0.5 * weighted_mae  # No extra scale factor
 
         losses = {
             'loss_risk_mse': weighted_mse,

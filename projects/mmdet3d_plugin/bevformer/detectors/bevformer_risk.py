@@ -162,15 +162,23 @@ class BEVFormerRisk(BEVFormer):
             gt_risk_maps = gt_risk_map
 
         len_queue = img.size(1)
-        prev_img = img[:, :-1, ...]
-        img = img[:, -1, ...]
 
-        prev_img_metas = copy.deepcopy(img_metas)
-        prev_bev = self.obtain_history_bev(prev_img, prev_img_metas)
-
-        img_metas = [each[len_queue - 1] for each in img_metas]
-        if not img_metas[0]['prev_bev_exists']:
+        # Handle single-frame case (no temporal history)
+        if len_queue == 1:
+            img = img[:, 0, ...]  # [B, 6, 3, H, W]
             prev_bev = None
+            img_metas = [each[0] for each in img_metas]
+        else:
+            # Multi-frame case: process temporal history
+            prev_img = img[:, :-1, ...]
+            img = img[:, -1, ...]
+
+            prev_img_metas = copy.deepcopy(img_metas)
+            prev_bev = self.obtain_history_bev(prev_img, prev_img_metas)
+
+            img_metas = [each[len_queue - 1] for each in img_metas]
+            if not img_metas[0]['prev_bev_exists']:
+                prev_bev = None
 
         img_feats = self.extract_feat(img=img, img_metas=img_metas)
         losses = dict()

@@ -51,9 +51,9 @@ CONFIG = {
         # Occlusion
         'A_ref': 10.0,          # m², reference area for occlusion normalization
 
-        # Urgency (TTC-based) - 조정: 더 긴급하게
-        'T_safe': 10.0,          # seconds, safe reaction time (3→10으로 증가)
-        'T_critical': 2.0,      # seconds, critical reaction time (1→2로 증가)
+        # Urgency (TTC-based) - gradient를 더 명확하게
+        'T_safe': 5.0,           # seconds, safe reaction time (50m at 10m/s → U=0)
+        'T_critical': 1.0,       # seconds, critical reaction time (10m at 10m/s → U=1)
 
         # Proximity (distance to trajectory) - 좌우 거리 영향 감소
         'd_close': 5.0,         # meters, on trajectory threshold (변경 없음)

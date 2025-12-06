@@ -40,7 +40,7 @@ model = dict(
 
     # Risk configuration
     use_risk_guidance=True,   # ENABLED: Use risk for attention guidance
-    risk_loss_weight=10.0,    # Reduced - loss function now has internal 100x scaling + focal weighting
+    risk_loss_weight=100.0,   # Increased - internal 100x scaling removed, focal weighting still active
 )
 
 # Dataset modifications
@@ -100,7 +100,7 @@ data = dict(
         test_mode=False,
         use_valid_flag=True,
         bev_size=(200, 200),
-        queue_length=3,
+        queue_length=1,  # Use 1 for filtered risk dataset (non-contiguous indices)
         # Risk-specific settings
         use_risk=True,
         risk_labels_path='data/emergence_risk_v5/risk_labels_train.pkl',  # Full train risk labels (162 matching samples from 4 scenes)
@@ -194,8 +194,9 @@ dist_params = dict(backend='nccl')
 find_unused_parameters = True  # Required for risk head in DDP
 log_level = 'INFO'
 work_dir = './work_dirs/bevformer_risk_tiny_attention'
-# Load pretrained BEVFormer weights (freeze detection, train risk head only)
-load_from = 'ckpts/r101_dcn_fcos3d_pretrain.pth'
+# Load pretrained BEVFormer weights with risk head (freeze detection, train risk head only)
+# Use existing trained risk model checkpoint instead of backbone-only pretrain
+load_from = 'work_dirs/bevformer_risk_attention_v2/epoch_1.pth'
 resume_from = None
 workflow = [('train', 1)]
 

@@ -54,50 +54,51 @@ def plot_comprehensive_visualization(img, risk_map, attention_weights, boxes, sc
     """
     Create comprehensive visualization with cameras around BEV layout.
 
-    Layout:
-        [FRONT_LEFT]  [FRONT]     [FRONT_RIGHT]
-        [BACK_LEFT]    [BEV]      [BACK_RIGHT]
-                      [BACK]
-        [GT RISK (if available)]  [PRED RISK]  [ATTENTION]
+    Layout (5 rows, 3 cols):
+        Row 0: [FRONT_LEFT]  [FRONT]     [FRONT_RIGHT]
+        Row 1: [BACK_LEFT]    [BEV]      [BACK_RIGHT]
+        Row 2:               [BACK]
+        Row 3: [GT RISK]     [PRED RISK]  [ATTENTION]
+        Row 4: [RISK SCORE SUMMARY - spans all columns]
     """
-    # Create figure with 4 rows
-    fig = plt.figure(figsize=(24, 20))
+    # Create figure with 5 rows for better separation
+    fig = plt.figure(figsize=(24, 28))
 
     # Camera names in order: FL, F, FR, BL, BR, B
     camera_names = ['FRONT_LEFT', 'FRONT', 'FRONT_RIGHT',
                     'BACK_LEFT', 'BACK_RIGHT', 'BACK']
 
-    # Define camera positions (row, col)
+    # Define camera positions (row, col) - adjusted for 5-row layout
     camera_positions = {
         'FRONT_LEFT': (0, 0),
         'FRONT': (0, 1),
         'FRONT_RIGHT': (0, 2),
-        'BACK_LEFT': (2, 0),
-        'BACK_RIGHT': (2, 2),
+        'BACK_LEFT': (1, 0),
+        'BACK_RIGHT': (1, 2),
         'BACK': (2, 1),
     }
 
     # 1. Display all 6 cameras around BEV
     if img is not None and len(img) >= 6:
         for idx, (cam_name, (row, col)) in enumerate(camera_positions.items()):
-            ax_cam = plt.subplot2grid((4, 3), (row, col))
+            ax_cam = plt.subplot2grid((5, 3), (row, col))
             if idx < len(img):
                 cam_img = denormalize_img(img[idx])
                 # Resize for display
                 cam_img_resized = cv2.resize(cam_img, (600, 338))
                 ax_cam.imshow(cam_img_resized)
-            ax_cam.set_title(cam_name.replace('_', ' '), fontsize=10, fontweight='bold')
+            ax_cam.set_title(cam_name.replace('_', ' '), fontsize=12, fontweight='bold')
             ax_cam.axis('off')
 
-    # 2. BEV with detection boxes (center position)
-    ax_bev = plt.subplot2grid((4, 3), (1, 1))
+    # 2. BEV with detection boxes (center position - row 1, col 1)
+    ax_bev = plt.subplot2grid((5, 3), (1, 1))
     ax_bev.set_xlim(-51.2, 51.2)
     ax_bev.set_ylim(-51.2, 51.2)
     ax_bev.set_aspect('equal')
     ax_bev.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
     ax_bev.set_xlabel('X (meters)', fontsize=10)
     ax_bev.set_ylabel('Y (meters)', fontsize=10)
-    ax_bev.set_title('Bird\'s Eye View - Detections', fontsize=11, fontweight='bold')
+    ax_bev.set_title('Bird\'s Eye View - Detections', fontsize=12, fontweight='bold')
 
     # Draw ego vehicle
     ego_rect = patches.Rectangle((-2, -2), 4, 4, linewidth=2,
@@ -133,38 +134,75 @@ def plot_comprehensive_visualization(img, risk_map, attention_weights, boxes, sc
         ax_bev.plot(corners_rot[:, 0], corners_rot[:, 1], color=color, linewidth=1.5)
         ax_bev.fill(corners_rot[:, 0], corners_rot[:, 1], color=color, alpha=0.2)
 
-    # 3. Bottom row: GT Risk (if available), Predicted Risk, Attention
+    # 3. Risk/Attention maps row (row 3)
     bottom_plots = []
     if gt_risk_map is not None:
         bottom_plots.append(('Ground Truth Risk', gt_risk_map, 'hot'))
     bottom_plots.append(('Predicted Risk Map', risk_map, 'hot'))
     bottom_plots.append(('Attention Weights', attention_weights, 'viridis'))
 
+    # Pad to 3 columns if needed
+    while len(bottom_plots) < 3:
+        bottom_plots.insert(0, (None, None, None))
+
     for idx, (title, data, cmap) in enumerate(bottom_plots):
-        ax = plt.subplot2grid((4, len(bottom_plots)), (3, idx))
+        ax = plt.subplot2grid((5, 3), (3, idx))
+        if title is None:
+            ax.axis('off')
+            continue
+
         # Handle both torch tensors and numpy arrays
         if hasattr(data, 'cpu'):
             plot_data = data.squeeze().cpu().numpy()
         else:
             plot_data = np.squeeze(data)
-        im = ax.imshow(plot_data, cmap=cmap, vmin=0, vmax=1)
-        ax.set_title(title, fontsize=10, fontweight='bold')
-        ax.set_xlabel('X (BEV)', fontsize=8)
-        ax.set_ylabel('Y (BEV)', fontsize=8)
+        im = ax.imshow(plot_data, cmap=cmap, vmin=0, vmax=1, origin='lower')
+        ax.set_title(title, fontsize=12, fontweight='bold')
+        ax.set_xlabel('X (BEV)', fontsize=9)
+        ax.set_ylabel('Y (BEV)', fontsize=9)
         plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-        # Add statistics
-        data_for_stats = plot_data
-        stats_text = f"Max: {data_for_stats.max():.3f}\nMean: {data_for_stats.mean():.3f}"
-        ax.text(0.02, 0.98, stats_text, transform=ax.transAxes,
-                verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
-                fontsize=8)
+    # 4. Risk Score Summary (row 4 - spans all columns)
+    ax_summary = plt.subplot2grid((5, 3), (4, 0), colspan=3)
+    ax_summary.axis('off')
+
+    # Prepare summary text
+    if hasattr(risk_map, 'cpu'):
+        risk_data = risk_map.squeeze().cpu().numpy()
+    else:
+        risk_data = np.squeeze(risk_map) if risk_map is not None else np.zeros((200, 200))
+
+    if gt_risk_map is not None:
+        if hasattr(gt_risk_map, 'cpu'):
+            gt_data = gt_risk_map.squeeze().cpu().numpy()
+        else:
+            gt_data = np.squeeze(gt_risk_map)
+        gt_stats = f"GT Risk - Max: {gt_data.max():.4f}, Mean: {gt_data.mean():.4f}, Non-zero: {(gt_data > 0).sum()}"
+    else:
+        gt_stats = "GT Risk - Not available"
+
+    pred_stats = f"Pred Risk - Max: {risk_data.max():.4f}, Mean: {risk_data.mean():.4f}, Non-zero: {(risk_data > 0.01).sum()}"
+
+    summary_text = f"""
+    ╔══════════════════════════════════════════════════════════════════════════════════╗
+    ║                              RISK SCORE SUMMARY                                   ║
+    ╠══════════════════════════════════════════════════════════════════════════════════╣
+    ║  {gt_stats:<80} ║
+    ║  {pred_stats:<80} ║
+    ║  Detections: {len(boxes_np)} total, {sum(1 for s in scores_np if s >= 0.3)} with score >= 0.3              ║
+    ╚══════════════════════════════════════════════════════════════════════════════════╝
+    """
+
+    ax_summary.text(0.5, 0.5, summary_text, transform=ax_summary.transAxes,
+                   fontsize=11, fontfamily='monospace',
+                   verticalalignment='center', horizontalalignment='center',
+                   bbox=dict(boxstyle='round,pad=0.5', facecolor='lightgray', alpha=0.8))
 
     # Main title
     fig.suptitle(f'Sample {sample_idx} - Risk-Guided Attention Inference Results',
-                fontsize=16, fontweight='bold', y=0.98)
+                fontsize=18, fontweight='bold', y=0.99)
 
-    plt.tight_layout(rect=[0, 0, 1, 0.97])
+    plt.tight_layout(rect=[0, 0, 1, 0.98])
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"  Comprehensive visualization saved to: {output_path}")

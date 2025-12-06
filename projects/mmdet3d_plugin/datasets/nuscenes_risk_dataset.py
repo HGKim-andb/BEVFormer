@@ -68,12 +68,13 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
             print(f"[Dataset Init] Total risk labels: {total_samples}")
             print(f"[Dataset Init] First 5 sample tokens: {list(self.risk_map_dict.keys())[:5]}")
 
-            # In test mode, ALWAYS filter to only use samples with risk labels
-            # to ensure evaluation works correctly
-            if test_mode:
-                self._filter_to_risk_samples_only()
-            # In train mode, filter by risk threshold if specified
-            elif self.risk_threshold > 0:
+            # ALWAYS filter to only use samples with risk labels
+            # This is necessary because risk_labels only cover a subset of scenes
+            # Without filtering, most samples get zero risk maps which prevents learning
+            self._filter_to_risk_samples_only()
+
+            # Additional filtering by risk threshold if specified (train mode only)
+            if not test_mode and self.risk_threshold > 0:
                 self._filter_by_risk_threshold()
         else:
             self.risk_labels_dict = None
@@ -168,12 +169,15 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
 
             if risk_label is not None:
                 input_dict['risk_label'] = risk_label
+                # Add gt_risk_map directly for pipeline (will be picked up by CustomCollect3D)
+                input_dict['gt_risk_map'] = risk_label['risk_map'].copy()
             else:
                 # Create zero risk map if label not found
                 input_dict['risk_label'] = {
                     'risk_map': np.zeros(self.risk_map_size, dtype=np.float32),
                     'metadata': {'max_risk': 0.0, 'mean_risk': 0.0}
                 }
+                input_dict['gt_risk_map'] = np.zeros(self.risk_map_size, dtype=np.float32)
 
         return input_dict
 
@@ -181,34 +185,51 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
         """
         Union queue samples with risk maps.
 
-        Extends parent method to handle risk map stacking.
+        Handles single-frame case specially for filtered risk dataset.
         """
-        # Call parent method
-        result = super().union2one(queue)
+        import copy
 
-        # If parent method returns None, return None
+        # Handle single-frame case (filtered risk dataset)
+        if len(queue) == 1:
+            result = queue[0]
+            # Set up img_metas for single frame
+            metas_map = {0: result['img_metas'].data}
+            metas_map[0]['prev_bev_exists'] = False
+
+            # Stack single image
+            imgs_list = [result['img'].data]
+            result['img'] = DC(torch.stack(imgs_list), cpu_only=False, stack=True)
+            result['img_metas'] = DC(metas_map, cpu_only=True)
+        else:
+            # Multi-frame case: call parent method
+            result = super().union2one(queue)
+
+        # If result is None, return None
         if result is None:
             return None
 
-        # Stack risk maps from queue
+        # Process risk maps from queue
         if self.use_risk:
-            # Get risk map from the last frame (current frame)
-            risk_label = None
-            if len(queue) > 0 and queue[-1] is not None and 'risk_label' in queue[-1]:
-                risk_label = queue[-1].get('risk_label')
+            # Get gt_risk_map from the last frame (already processed by pipeline via CustomCollect3D)
+            risk_map = None
+            if len(queue) > 0 and queue[-1] is not None:
+                # Try to get gt_risk_map directly from pipeline result
+                if 'gt_risk_map' in queue[-1]:
+                    risk_map_data = queue[-1]['gt_risk_map']
+                    # Handle numpy array directly (from pipeline)
+                    if isinstance(risk_map_data, np.ndarray):
+                        risk_map = torch.from_numpy(risk_map_data).float()
+                    elif isinstance(risk_map_data, torch.Tensor):
+                        risk_map = risk_map_data.float()
+                    elif hasattr(risk_map_data, 'data'):
+                        # Already a DataContainer - just use it directly
+                        result['gt_risk_map'] = risk_map_data
+                        result['risk_metadata'] = DC({'processed': True}, cpu_only=True)
+                        return result
 
-            if risk_label is not None and 'risk_map' in risk_label:
-                risk_map = risk_label['risk_map']
-
-                # Convert to tensor
-                if isinstance(risk_map, np.ndarray):
-                    risk_map = torch.from_numpy(risk_map).float()
-
-                # Add to result
+            if risk_map is not None:
                 result['gt_risk_map'] = DC(risk_map, cpu_only=False)
-
-                # Also add metadata for analysis
-                result['risk_metadata'] = DC(risk_label.get('metadata', {}), cpu_only=True)
+                result['risk_metadata'] = DC({'max_risk': float(risk_map.max())}, cpu_only=True)
             else:
                 # Fallback: add zero risk map
                 zero_risk = torch.zeros(self.risk_map_size, dtype=torch.float32)
@@ -220,8 +241,34 @@ class NuScenesRiskDataset(CustomNuScenesDataset):
     def prepare_train_data(self, index):
         """
         Training data preparation with risk labels.
+
+        Override parent to handle filtered dataset where queue_length may cause
+        index out of range issues.
         """
-        data = super().prepare_train_data(index)
+        import random
+
+        queue = []
+        # Use queue_length from dataset config
+        queue_length = getattr(self, 'queue_length', 1)
+
+        # For filtered risk dataset, only use current frame
+        # This avoids index out of range when dataset is sparse
+        index_list = [index]
+
+        for i in index_list:
+            # Ensure index is valid
+            i = max(0, min(i, len(self.data_infos) - 1))
+            input_dict = self.get_data_info(i)
+            if input_dict is None:
+                return None
+            self.pre_pipeline(input_dict)
+            example = self.pipeline(input_dict)
+            if self.filter_empty_gt and \
+                    (example is None or ~(example['gt_labels_3d']._data != -1).any()):
+                return None
+            queue.append(example)
+
+        data = self.union2one(queue)
 
         # Ensure risk map is present
         if data is not None and self.use_risk:
