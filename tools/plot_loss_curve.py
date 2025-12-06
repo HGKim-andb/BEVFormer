@@ -85,9 +85,9 @@ def plot_loss_curves(logs, output_path, smooth_weight=0.9, figsize=(16, 12)):
     grad_norm = []
     lr = []
 
-    for log in logs:
-        iter_num = (log['epoch'] - 1) * 1000 + log['iter']  # Approximate
-        iterations.append(iter_num)
+    # Use sequential index as iteration (more reliable than computing from epoch/iter)
+    for idx, log in enumerate(logs):
+        iterations.append(idx)
         epochs.append(log['epoch'])
 
         total_loss.append(log.get('loss', 0))
@@ -113,7 +113,7 @@ def plot_loss_curves(logs, output_path, smooth_weight=0.9, figsize=(16, 12)):
     ax.plot(iterations, total_loss, alpha=0.3, color='blue', label='Raw')
     ax.plot(iterations, smooth_curve(total_loss, smooth_weight),
             color='blue', linewidth=2, label='Smoothed')
-    ax.set_xlabel('Iterations')
+    ax.set_xlabel('Step')
     ax.set_ylabel('Total Loss')
     ax.set_title('Total Loss')
     ax.legend()
@@ -125,7 +125,7 @@ def plot_loss_curves(logs, output_path, smooth_weight=0.9, figsize=(16, 12)):
     ax.plot(iterations, risk_loss, alpha=0.3, color='red', label='Raw')
     ax.plot(iterations, smooth_curve(risk_loss, smooth_weight),
             color='red', linewidth=2, label='Smoothed')
-    ax.set_xlabel('Iterations')
+    ax.set_xlabel('Step')
     ax.set_ylabel('Risk Loss')
     ax.set_title('Risk Loss (weighted)')
     ax.legend()
@@ -139,7 +139,7 @@ def plot_loss_curves(logs, output_path, smooth_weight=0.9, figsize=(16, 12)):
     ax.plot(iterations, risk_mae, alpha=0.3, color='green', label='MAE (raw)')
     ax.plot(iterations, smooth_curve(risk_mae, smooth_weight),
             color='green', linewidth=2, label='MAE (smoothed)')
-    ax.set_xlabel('Iterations')
+    ax.set_xlabel('Step')
     ax.set_ylabel('Loss')
     ax.set_title('Risk MSE & MAE')
     ax.legend()
@@ -150,7 +150,7 @@ def plot_loss_curves(logs, output_path, smooth_weight=0.9, figsize=(16, 12)):
     ax.plot(iterations, detection_loss, alpha=0.3, color='purple', label='Raw')
     ax.plot(iterations, smooth_curve(detection_loss, smooth_weight),
             color='purple', linewidth=2, label='Smoothed')
-    ax.set_xlabel('Iterations')
+    ax.set_xlabel('Step')
     ax.set_ylabel('Detection Loss')
     ax.set_title('Detection Loss (cls + bbox)')
     ax.legend()
@@ -161,7 +161,7 @@ def plot_loss_curves(logs, output_path, smooth_weight=0.9, figsize=(16, 12)):
     ax.plot(iterations, grad_norm, alpha=0.3, color='brown', label='Raw')
     ax.plot(iterations, smooth_curve(grad_norm, smooth_weight),
             color='brown', linewidth=2, label='Smoothed')
-    ax.set_xlabel('Iterations')
+    ax.set_xlabel('Step')
     ax.set_ylabel('Gradient Norm')
     ax.set_title('Gradient Norm')
     ax.legend()
@@ -170,7 +170,7 @@ def plot_loss_curves(logs, output_path, smooth_weight=0.9, figsize=(16, 12)):
     # 6. Learning Rate
     ax = axes[2, 1]
     ax.plot(iterations, lr, color='teal', linewidth=2)
-    ax.set_xlabel('Iterations')
+    ax.set_xlabel('Step')
     ax.set_ylabel('Learning Rate')
     ax.set_title('Learning Rate Schedule')
     ax.grid(True, alpha=0.3)
